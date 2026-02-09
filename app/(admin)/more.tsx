@@ -13,25 +13,37 @@ import {
   Platform,
   Switch,
 } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getImageUrl } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 
+type SectionType = "users" | "banners" | "announcements" | null;
+
 export default function AdminMore() {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
-  const [activeSection, setActiveSection] = useState<"users" | "banners" | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionType>(null);
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
   const [bannerTitle, setBannerTitle] = useState("");
   const [bannerImage, setBannerImage] = useState("");
   const [bannerLink, setBannerLink] = useState("");
   const [bannerActive, setBannerActive] = useState(true);
+
+  const [showAnnModal, setShowAnnModal] = useState(false);
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annMessage, setAnnMessage] = useState("");
+  const [annImage, setAnnImage] = useState("");
+  const [annActive, setAnnActive] = useState(true);
+  const [annStartDate, setAnnStartDate] = useState("");
+  const [annEndDate, setAnnEndDate] = useState("");
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
@@ -43,6 +55,12 @@ export default function AdminMore() {
     queryKey: ["admin", "banners"],
     queryFn: () => apiFetch("/api/admin/banners"),
     enabled: activeSection === "banners",
+  });
+
+  const announcementsQuery = useQuery({
+    queryKey: ["admin", "announcements"],
+    queryFn: () => apiFetch("/api/admin/announcements"),
+    enabled: activeSection === "announcements",
   });
 
   const saveBannerMutation = useMutation({
@@ -65,6 +83,27 @@ export default function AdminMore() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
       queryClient.invalidateQueries({ queryKey: ["banners"] });
+    },
+  });
+
+  const saveAnnMutation = useMutation({
+    mutationFn: (data: any) => {
+      if (editingAnnId) {
+        return apiFetch(`/api/admin/announcements/${editingAnnId}`, { method: "PUT", body: JSON.stringify(data) });
+      }
+      return apiFetch("/api/admin/announcements", { method: "POST", body: JSON.stringify(data) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
+      closeAnnModal();
+    },
+    onError: (err: any) => Alert.alert("Error", err.message),
+  });
+
+  const deleteAnnMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/admin/announcements/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
     },
   });
 
@@ -99,9 +138,72 @@ export default function AdminMore() {
     saveBannerMutation.mutate({ title: bannerTitle.trim(), image: bannerImage.trim(), link: bannerLink.trim(), isActive: bannerActive });
   }
 
+  function openNewAnn() {
+    setEditingAnnId(null);
+    setAnnTitle("");
+    setAnnMessage("");
+    setAnnImage("");
+    setAnnActive(true);
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    setAnnStartDate(today.toISOString().split("T")[0]);
+    setAnnEndDate(nextWeek.toISOString().split("T")[0]);
+    setShowAnnModal(true);
+  }
+
+  function openEditAnn(ann: any) {
+    setEditingAnnId(ann.id);
+    setAnnTitle(ann.title);
+    setAnnMessage(ann.message || "");
+    setAnnImage(ann.image || "");
+    setAnnActive(ann.isActive);
+    setAnnStartDate(ann.startDate ? new Date(ann.startDate).toISOString().split("T")[0] : "");
+    setAnnEndDate(ann.endDate ? new Date(ann.endDate).toISOString().split("T")[0] : "");
+    setShowAnnModal(true);
+  }
+
+  function closeAnnModal() {
+    setShowAnnModal(false);
+    setEditingAnnId(null);
+  }
+
+  function handleSaveAnn() {
+    if (!annTitle.trim()) {
+      Alert.alert("Error", "Title is required");
+      return;
+    }
+    if (!annStartDate || !annEndDate) {
+      Alert.alert("Error", "Start date and end date are required");
+      return;
+    }
+    saveAnnMutation.mutate({
+      title: annTitle.trim(),
+      message: annMessage.trim(),
+      image: annImage.trim(),
+      isActive: annActive,
+      startDate: annStartDate,
+      endDate: annEndDate,
+    });
+  }
+
   async function handleLogout() {
     await logout();
     router.replace("/login");
+  }
+
+  function formatDate(d: string) {
+    if (!d) return "";
+    const date = new Date(d);
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  function isCurrentlyActive(ann: any) {
+    if (!ann.isActive) return false;
+    const now = new Date();
+    const start = new Date(ann.startDate);
+    const end = new Date(ann.endDate);
+    return now >= start && now <= end;
   }
 
   if (!activeSection) {
@@ -130,6 +232,17 @@ export default function AdminMore() {
           <View style={styles.menuInfo}>
             <Text style={styles.menuTitle}>Banner Management</Text>
             <Text style={styles.menuDesc}>Manage promotional banners</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+        </Pressable>
+
+        <Pressable style={styles.menuCard} onPress={() => setActiveSection("announcements")}>
+          <View style={[styles.menuIcon, { backgroundColor: "#EC4899" }]}>
+            <Ionicons name="notifications" size={22} color={Colors.white} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Announcements</Text>
+            <Text style={styles.menuDesc}>Manage popup announcements</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
         </Pressable>
@@ -202,6 +315,129 @@ export default function AdminMore() {
     );
   }
 
+  if (activeSection === "announcements") {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
+          <Pressable onPress={() => setActiveSection(null)}>
+            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Announcements</Text>
+          <Pressable style={[styles.addBtn, { backgroundColor: "#EC4899" }]} onPress={openNewAnn}>
+            <Ionicons name="add" size={22} color={Colors.white} />
+          </Pressable>
+        </View>
+        {announcementsQuery.isLoading ? (
+          <ActivityIndicator size="large" color="#EC4899" style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={announcementsQuery.data || []}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="notifications-off-outline" size={48} color={Colors.textLight} />
+                <Text style={styles.emptyText}>No announcements yet</Text>
+              </View>
+            }
+            renderItem={({ item }) => {
+              const live = isCurrentlyActive(item);
+              return (
+                <View style={styles.annCard}>
+                  {item.image ? (
+                    <Image
+                      source={{ uri: getImageUrl(item.image) }}
+                      style={styles.annImage}
+                      contentFit="cover"
+                    />
+                  ) : null}
+                  <View style={styles.annBody}>
+                    <View style={styles.annTopRow}>
+                      <Text style={styles.annTitle} numberOfLines={1}>{item.title}</Text>
+                      <View style={[styles.annStatusBadge, { backgroundColor: live ? "#DCFCE7" : "#FEE2E2" }]}>
+                        <View style={[styles.annStatusDot, { backgroundColor: live ? Colors.success : Colors.error }]} />
+                        <Text style={[styles.annStatusText, { color: live ? Colors.success : Colors.error }]}>
+                          {live ? "Live" : item.isActive ? "Scheduled" : "Inactive"}
+                        </Text>
+                      </View>
+                    </View>
+                    {item.message ? (
+                      <Text style={styles.annMsg} numberOfLines={2}>{item.message}</Text>
+                    ) : null}
+                    <Text style={styles.annDates}>
+                      {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                    </Text>
+                    <View style={styles.annActions}>
+                      <Pressable style={styles.annActionBtn} onPress={() => openEditAnn(item)}>
+                        <Ionicons name="create-outline" size={18} color="#EC4899" />
+                        <Text style={[styles.annActionText, { color: "#EC4899" }]}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.annActionBtn}
+                        onPress={() => {
+                          Alert.alert("Delete", "Delete this announcement?", [
+                            { text: "Cancel" },
+                            { text: "Delete", style: "destructive", onPress: () => deleteAnnMutation.mutate(item.id) },
+                          ]);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                        <Text style={[styles.annActionText, { color: Colors.error }]}>Delete</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              );
+            }}
+          />
+        )}
+
+        <Modal visible={showAnnModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingAnnId ? "Edit Announcement" : "New Announcement"}</Text>
+                  <Pressable onPress={closeAnnModal}>
+                    <Ionicons name="close" size={24} color={Colors.text} />
+                  </Pressable>
+                </View>
+                <View style={styles.modalForm}>
+                  <Text style={styles.fieldLabel}>Title *</Text>
+                  <TextInput style={styles.modalInput} placeholder="Announcement title" value={annTitle} onChangeText={setAnnTitle} placeholderTextColor={Colors.textLight} />
+                  <Text style={styles.fieldLabel}>Message</Text>
+                  <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: "top" }]} placeholder="Announcement message" value={annMessage} onChangeText={setAnnMessage} placeholderTextColor={Colors.textLight} multiline />
+                  <Text style={styles.fieldLabel}>Image URL</Text>
+                  <TextInput style={styles.modalInput} placeholder="https://..." value={annImage} onChangeText={setAnnImage} placeholderTextColor={Colors.textLight} />
+                  <Text style={styles.fieldLabel}>Start Date *</Text>
+                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={annStartDate} onChangeText={setAnnStartDate} placeholderTextColor={Colors.textLight} />
+                  <Text style={styles.fieldLabel}>End Date *</Text>
+                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={annEndDate} onChangeText={setAnnEndDate} placeholderTextColor={Colors.textLight} />
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Active</Text>
+                    <Switch value={annActive} onValueChange={setAnnActive} trackColor={{ true: "#EC4899" }} />
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [styles.saveBtn, { backgroundColor: "#EC4899" }, pressed && { opacity: 0.9 }]}
+                    onPress={handleSaveAnn}
+                    disabled={saveAnnMutation.isPending}
+                  >
+                    {saveAnnMutation.isPending ? (
+                      <ActivityIndicator color={Colors.white} />
+                    ) : (
+                      <Text style={styles.saveBtnText}>{editingAnnId ? "Update" : "Create"}</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
@@ -231,7 +467,7 @@ export default function AdminMore() {
             <View style={styles.bannerCard}>
               <View style={styles.bannerRow}>
                 <View style={styles.bannerInfo}>
-                  <Text style={styles.bannerTitle}>{item.title}</Text>
+                  <Text style={styles.bannerTitleText}>{item.title}</Text>
                   <Text style={styles.bannerMeta}>{item.isActive ? "Active" : "Inactive"}</Text>
                 </View>
                 <View style={styles.bannerActions}>
@@ -313,19 +549,33 @@ const styles = StyleSheet.create({
   bannerCard: { backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.borderLight },
   bannerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   bannerInfo: { flex: 1, gap: 2 },
-  bannerTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  bannerTitleText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
   bannerMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   bannerActions: { flexDirection: "row", gap: 14 },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  modalContent: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "85%" },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
-  modalForm: { padding: 20, gap: 14, paddingBottom: 40 },
+  modalForm: { padding: 20, gap: 12, paddingBottom: 40 },
+  fieldLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: -6 },
   modalInput: { backgroundColor: Colors.surfaceAlt, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.text, borderWidth: 1, borderColor: Colors.border },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   switchLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.text },
   saveBtn: { backgroundColor: "#8B5CF6", borderRadius: 12, height: 48, justifyContent: "center", alignItems: "center", marginTop: 8 },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  annCard: { backgroundColor: Colors.surface, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.borderLight },
+  annImage: { width: "100%", height: 140 },
+  annBody: { padding: 14, gap: 6 },
+  annTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  annTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text, flex: 1 },
+  annStatusBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  annStatusDot: { width: 6, height: 6, borderRadius: 3 },
+  annStatusText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  annMsg: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
+  annDates: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textLight },
+  annActions: { flexDirection: "row", gap: 16, marginTop: 4 },
+  annActionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  annActionText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 });
