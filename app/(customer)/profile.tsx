@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,8 +14,20 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
+import { apiFetch } from "@/lib/api";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
+
+interface ShippingAddress {
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+}
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -24,6 +36,36 @@ export default function ProfileScreen() {
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [saving, setSaving] = useState(false);
+
+  const [editingShipping, setEditingShipping] = useState(false);
+  const [savingShipping, setSavingShipping] = useState(false);
+  const [loadingShipping, setLoadingShipping] = useState(true);
+  const [shipping, setShipping] = useState<ShippingAddress>({
+    fullName: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "India",
+  });
+  const [shippingDraft, setShippingDraft] = useState<ShippingAddress>({ ...shipping });
+
+  useEffect(() => {
+    loadShipping();
+  }, []);
+
+  async function loadShipping() {
+    try {
+      const data = await apiFetch("/api/auth/shipping");
+      setShipping(data);
+      setShippingDraft(data);
+    } catch {
+    } finally {
+      setLoadingShipping(false);
+    }
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -42,10 +84,34 @@ export default function ProfileScreen() {
     }
   }
 
+  async function handleSaveShipping() {
+    if (!shippingDraft.fullName.trim() || !shippingDraft.addressLine1.trim() || !shippingDraft.city.trim() || !shippingDraft.state.trim() || !shippingDraft.pincode.trim()) {
+      Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+    setSavingShipping(true);
+    try {
+      const data = await apiFetch("/api/auth/shipping", {
+        method: "PUT",
+        body: JSON.stringify(shippingDraft),
+      });
+      setShipping(data);
+      setShippingDraft(data);
+      setEditingShipping(false);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setSavingShipping(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     router.replace("/login");
   }
+
+  const hasShipping = shipping.addressLine1.trim().length > 0;
 
   return (
     <ScrollView
@@ -131,6 +197,123 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="location-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Shipping Address</Text>
+          </View>
+          {!editingShipping && (
+            <Pressable onPress={() => { setShippingDraft({ ...shipping }); setEditingShipping(true); }}>
+              <Ionicons name={hasShipping ? "create-outline" : "add-circle-outline"} size={22} color={Colors.primary} />
+            </Pressable>
+          )}
+        </View>
+
+        {loadingShipping ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : editingShipping ? (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Full Name *"
+              placeholderTextColor={Colors.textLight}
+              value={shippingDraft.fullName}
+              onChangeText={(t) => setShippingDraft({ ...shippingDraft, fullName: t })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number"
+              placeholderTextColor={Colors.textLight}
+              value={shippingDraft.phone}
+              onChangeText={(t) => setShippingDraft({ ...shippingDraft, phone: t })}
+              keyboardType="phone-pad"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Address Line 1 *"
+              placeholderTextColor={Colors.textLight}
+              value={shippingDraft.addressLine1}
+              onChangeText={(t) => setShippingDraft({ ...shippingDraft, addressLine1: t })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Address Line 2"
+              placeholderTextColor={Colors.textLight}
+              value={shippingDraft.addressLine2}
+              onChangeText={(t) => setShippingDraft({ ...shippingDraft, addressLine2: t })}
+            />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="City *"
+                placeholderTextColor={Colors.textLight}
+                value={shippingDraft.city}
+                onChangeText={(t) => setShippingDraft({ ...shippingDraft, city: t })}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="State *"
+                placeholderTextColor={Colors.textLight}
+                value={shippingDraft.state}
+                onChangeText={(t) => setShippingDraft({ ...shippingDraft, state: t })}
+              />
+            </View>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Pincode *"
+                placeholderTextColor={Colors.textLight}
+                value={shippingDraft.pincode}
+                onChangeText={(t) => setShippingDraft({ ...shippingDraft, pincode: t })}
+                keyboardType="number-pad"
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Country"
+                placeholderTextColor={Colors.textLight}
+                value={shippingDraft.country}
+                onChangeText={(t) => setShippingDraft({ ...shippingDraft, country: t })}
+              />
+            </View>
+            <View style={styles.editActions}>
+              <Pressable
+                style={[styles.actionBtn, styles.cancelBtn]}
+                onPress={() => { setEditingShipping(false); setShippingDraft({ ...shipping }); }}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[styles.actionBtn, styles.saveBtn]} onPress={handleSaveShipping} disabled={savingShipping}>
+                {savingShipping ? (
+                  <ActivityIndicator color={Colors.white} size="small" />
+                ) : (
+                  <Text style={styles.saveText}>Save Address</Text>
+                )}
+              </Pressable>
+            </View>
+          </>
+        ) : hasShipping ? (
+          <View style={styles.addressDisplay}>
+            <Text style={styles.addressName}>{shipping.fullName}</Text>
+            <Text style={styles.addressLine}>{shipping.addressLine1}</Text>
+            {shipping.addressLine2 ? <Text style={styles.addressLine}>{shipping.addressLine2}</Text> : null}
+            <Text style={styles.addressLine}>{shipping.city}, {shipping.state} {shipping.pincode}</Text>
+            {shipping.phone ? <Text style={styles.addressPhone}>{shipping.phone}</Text> : null}
+          </View>
+        ) : (
+          <Text style={styles.noAddress}>No shipping address saved. Add one for faster checkout.</Text>
+        )}
+      </View>
+
+      <Pressable
+        style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.9 }]}
+        onPress={() => router.push("/support" as any)}
+      >
+        <Ionicons name="chatbubbles-outline" size={22} color={Colors.primary} />
+        <Text style={styles.menuText}>Help & Support</Text>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />
+      </Pressable>
+
       <Pressable
         style={({ pressed }) => [styles.logoutBtn, pressed && { opacity: 0.9 }]}
         onPress={handleLogout}
@@ -193,6 +376,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   sectionTitle: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
@@ -224,6 +412,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: Colors.surfaceAlt,
   },
+  inputRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
   editActions: {
     flexDirection: "row",
     gap: 12,
@@ -251,6 +443,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
+  },
+  addressDisplay: {
+    gap: 2,
+  },
+  addressName: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  addressLine: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  addressPhone: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  noAddress: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+    fontStyle: "italic" as const,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: Colors.text,
   },
   logoutBtn: {
     flexDirection: "row",

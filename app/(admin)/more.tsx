@@ -134,6 +134,17 @@ export default function AdminMore() {
           <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
         </Pressable>
 
+        <Pressable style={styles.menuCard} onPress={() => router.push("/admin-tickets" as any)}>
+          <View style={[styles.menuIcon, { backgroundColor: "#16A34A" }]}>
+            <Ionicons name="chatbubbles" size={22} color={Colors.white} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Support Tickets</Text>
+            <Text style={styles.menuDesc}>Manage customer tickets</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+        </Pressable>
+
         <Pressable style={styles.menuCard} onPress={() => router.push("/(customer)")}>
           <View style={[styles.menuIcon, { backgroundColor: Colors.primary }]}>
             <Ionicons name="storefront" size={22} color={Colors.white} />

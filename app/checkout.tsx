@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -58,6 +58,31 @@ export default function CheckoutScreen() {
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [razorpayHtml, setRazorpayHtml] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [addressLoaded, setAddressLoaded] = useState(false);
+
+  useEffect(() => {
+    loadSavedAddress();
+  }, []);
+
+  async function loadSavedAddress() {
+    try {
+      const saved = await apiFetch("/api/auth/shipping");
+      if (saved && saved.addressLine1) {
+        setAddress({
+          fullName: saved.fullName || "",
+          phone: saved.phone || "",
+          addressLine1: saved.addressLine1 || "",
+          addressLine2: saved.addressLine2 || "",
+          city: saved.city || "",
+          state: saved.state || "",
+          pincode: saved.pincode || "",
+        });
+      }
+    } catch {
+    } finally {
+      setAddressLoaded(true);
+    }
+  }
 
   const cartQuery = useQuery({
     queryKey: ["cart"],
@@ -382,7 +407,15 @@ export default function CheckoutScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipping Address</Text>
+            <View style={styles.shippingHeader}>
+              <Text style={styles.sectionTitle}>Shipping Address</Text>
+              {addressLoaded && address.addressLine1 ? (
+                <View style={styles.autoFillBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
+                  <Text style={styles.autoFillText}>Auto-filled</Text>
+                </View>
+              ) : null}
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Full Name"
@@ -545,6 +578,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  shippingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  autoFillBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  autoFillText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.primary,
+  },
   sectionTitle: {
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",
@@ -676,7 +728,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   placeOrderText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
   },
@@ -692,7 +744,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
   },
   webviewClose: {
     width: 40,

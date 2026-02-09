@@ -108,6 +108,10 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
+        <Pressable style={styles.forgotBtn} onPress={() => router.push("/forgot-password" as any)}>
+          <Text style={styles.forgotText}>Forgot Password?</Text>
+        </Pressable>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
           <Pressable onPress={() => router.push("/register")}>
@@ -214,6 +218,15 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  forgotBtn: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  forgotText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
     color: Colors.primary,
   },
 });
