@@ -4,6 +4,14 @@
 Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, and promotional banners.
 
 ## Recent Changes
+- 2026-02-09: Auth hardening and security improvements
+  - JWT access token (15min) + refresh token (30d) flow
+  - /api/auth/refresh endpoint for session restoration
+  - Auto 401 retry with token refresh in API helpers (lib/api.ts, lib/query-client.ts)
+  - Server-side session validation on app load (lib/auth-context.tsx)
+  - Separate admin-login screen (app/admin-login.tsx)
+  - Admin panel link removed from customer profile
+  - Route guards on (admin) and (customer) layouts
 - 2026-02-09: Initial build of complete eCommerce system
   - PostgreSQL database schema (users, products, categories, orders, cart_items, banners)
   - Express API with JWT auth, bcrypt, role-based middleware
