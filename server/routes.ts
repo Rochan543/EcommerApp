@@ -14,6 +14,8 @@ import {
   generateToken,
   generateRefreshToken,
   verifyRefreshToken,
+  setAuthCookies,
+  clearAuthCookies,
 } from "./middleware";
 import {
   insertUserSchema,
@@ -83,6 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tokenPayload = { id: user.id, role: user.role, email: user.email };
       const token = generateToken(tokenPayload);
       const refreshToken = generateRefreshToken(tokenPayload);
+      setAuthCookies(res, token, refreshToken);
       return res.status(201).json({
         token,
         refreshToken,
@@ -113,6 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tokenPayload = { id: user.id, role: user.role, email: user.email };
       const token = generateToken(tokenPayload);
       const refreshToken = generateRefreshToken(tokenPayload);
+      setAuthCookies(res, token, refreshToken);
       return res.json({
         token,
         refreshToken,
@@ -154,24 +158,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/refresh", async (req, res) => {
     try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) {
+      const refreshTokenValue = req.body.refreshToken || req.cookies?.refresh_token;
+      if (!refreshTokenValue) {
         return res.status(401).json({ message: "No refresh token provided" });
       }
 
-      const decoded = verifyRefreshToken(refreshToken);
+      const decoded = verifyRefreshToken(refreshTokenValue);
       if (!decoded) {
+        clearAuthCookies(res);
         return res.status(401).json({ message: "Invalid or expired refresh token" });
       }
 
       const user = await storage.getUserById(decoded.id);
       if (!user) {
+        clearAuthCookies(res);
         return res.status(401).json({ message: "User not found" });
       }
 
       const tokenPayload = { id: user.id, role: user.role, email: user.email };
       const newAccessToken = generateToken(tokenPayload);
       const newRefreshToken = generateRefreshToken(tokenPayload);
+      setAuthCookies(res, newAccessToken, newRefreshToken);
 
       return res.json({
         token: newAccessToken,
@@ -181,6 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
     }
+  });
+
+  app.post("/api/auth/logout", (_req, res) => {
+    clearAuthCookies(res);
+    return res.json({ message: "Logged out" });
   });
 
   app.put("/api/auth/profile", authMiddleware as any, async (req: any, res) => {
