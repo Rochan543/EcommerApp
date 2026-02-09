@@ -81,7 +81,7 @@ export default function OrdersScreen() {
                 <View style={styles.orderItems}>
                   {(item.items as any[]).slice(0, 2).map((prod: any, i: number) => (
                     <Text key={i} style={styles.orderItemText} numberOfLines={1}>
-                      {prod.quantity}x {prod.title}
+                      {prod.quantity}x {prod.title}{prod.size ? ` (${prod.size})` : ""}
                     </Text>
                   ))}
                   {(item.items as any[]).length > 2 && (

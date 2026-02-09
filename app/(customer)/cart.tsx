@@ -97,6 +97,11 @@ export default function CartScreen() {
                 )}
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemTitle} numberOfLines={2}>{product.title}</Text>
+                  {item.size && (
+                    <View style={styles.sizeBadge}>
+                      <Text style={styles.sizeBadgeText}>Size: {item.size}</Text>
+                    </View>
+                  )}
                   <Text style={styles.itemPrice}>{formatINR(price * item.quantity)}</Text>
                   <View style={styles.qtyRow}>
                     <Pressable
@@ -206,6 +211,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     color: Colors.text,
+  },
+  sizeBadge: {
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  sizeBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
   },
   itemPrice: {
     fontSize: 16,

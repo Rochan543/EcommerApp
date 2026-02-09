@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Dimensions,
   FlatList,
   TextInput,
+  Modal,
+  PanResponder,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, router } from "expo-router";
@@ -22,8 +24,151 @@ import { useAuth } from "@/lib/auth-context";
 import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
-const { width } = Dimensions.get("window");
+const { width, height: screenHeight } = Dimensions.get("window");
+
+function ImageZoomModal({ visible, imageUri, onClose }: { visible: boolean; imageUri: string; onClose: () => void }) {
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const lastScale = useRef(1);
+  const lastTranslateX = useRef(0);
+  const lastTranslateY = useRef(0);
+  const lastTap = useRef(0);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const now = Date.now();
+        if (now - lastTap.current < 300 && evt.nativeEvent.changedTouches.length === 1) {
+          if (lastScale.current > 1.1) {
+            scale.value = withSpring(1);
+            translateX.value = withSpring(0);
+            translateY.value = withSpring(0);
+            lastScale.current = 1;
+            lastTranslateX.current = 0;
+            lastTranslateY.current = 0;
+          } else {
+            scale.value = withSpring(2.5);
+            lastScale.current = 2.5;
+          }
+        }
+        lastTap.current = now;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (evt.nativeEvent.changedTouches.length >= 2) {
+          const touches = evt.nativeEvent.changedTouches;
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (!panResponder.current.initialDist) {
+            panResponder.current.initialDist = dist;
+          } else {
+            const newScale = Math.max(0.5, Math.min(5, lastScale.current * (dist / panResponder.current.initialDist)));
+            scale.value = newScale;
+          }
+        } else if (lastScale.current > 1) {
+          translateX.value = lastTranslateX.current + gestureState.dx;
+          translateY.value = lastTranslateY.current + gestureState.dy;
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (panResponder.current.initialDist) {
+          lastScale.current = scale.value;
+          panResponder.current.initialDist = null;
+          if (lastScale.current < 1) {
+            scale.value = withSpring(1);
+            translateX.value = withSpring(0);
+            translateY.value = withSpring(0);
+            lastScale.current = 1;
+            lastTranslateX.current = 0;
+            lastTranslateY.current = 0;
+          }
+        } else {
+          lastTranslateX.current = translateX.value;
+          lastTranslateY.current = translateY.value;
+          if (lastScale.current <= 1 && Math.abs(gestureState.dy) > 100 && Math.abs(gestureState.vy) > 0.3) {
+            onClose();
+            scale.value = 1;
+            translateX.value = 0;
+            translateY.value = 0;
+            lastScale.current = 1;
+            lastTranslateX.current = 0;
+            lastTranslateY.current = 0;
+          }
+        }
+      },
+    })
+  ).current as any;
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={zoomStyles.overlay}>
+        <Pressable style={zoomStyles.closeBtn} onPress={onClose}>
+          <Ionicons name="close" size={28} color="#fff" />
+        </Pressable>
+        <View style={zoomStyles.imageWrap} {...panResponder.panHandlers}>
+          <Animated.View style={animStyle}>
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width, height: width }}
+              contentFit="contain"
+            />
+          </Animated.View>
+        </View>
+        <Text style={zoomStyles.hint}>Pinch to zoom, double-tap to toggle, swipe down to close</Text>
+      </View>
+    </Modal>
+  );
+}
+
+const zoomStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  imageWrap: {
+    width,
+    height: width,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  hint: {
+    position: "absolute",
+    bottom: 60,
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+});
 
 function RecommendedProductCard({ item }: { item: any }) {
   const price = item.price;
@@ -131,6 +276,8 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams();
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState(0);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const { user } = useAuth();
@@ -174,7 +321,7 @@ export default function ProductDetailScreen() {
     mutationFn: () =>
       apiFetch("/api/cart", {
         method: "POST",
-        body: JSON.stringify({ productId: id, quantity }),
+        body: JSON.stringify({ productId: id, quantity, size: selectedSize }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
@@ -193,6 +340,11 @@ export default function ProductDetailScreen() {
     }
     const product = query.data;
     if (!product) return;
+    const hasSizes = product.sizes && (product.sizes as any[]).length > 0;
+    if (hasSizes && !selectedSize) {
+      Alert.alert("Select Size", "Please select a size before purchasing");
+      return;
+    }
     const price = product.discountPrice || product.price;
     router.push({
       pathname: "/checkout",
@@ -202,8 +354,20 @@ export default function ProductDetailScreen() {
         productTitle: product.title,
         productPrice: price.toString(),
         quantity: quantity.toString(),
+        ...(selectedSize ? { size: selectedSize } : {}),
       },
     });
+  };
+
+  const handleAddToCart = () => {
+    const product = query.data;
+    if (!product) return;
+    const hasSizes = product.sizes && (product.sizes as any[]).length > 0;
+    if (hasSizes && !selectedSize) {
+      Alert.alert("Select Size", "Please select a size before adding to cart");
+      return;
+    }
+    addToCartMutation.mutate();
   };
 
   if (query.isLoading) {
@@ -232,6 +396,8 @@ export default function ProductDetailScreen() {
     ? reviewsList.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsList.length
     : 0;
   const userAlreadyReviewed = user ? reviewsList.some((r: any) => r.userId === user.id) : false;
+  const productSizes: { label: string; stock: number }[] = product.sizes || [];
+  const hasSizes = productSizes.length > 0;
 
   return (
     <View style={styles.container}>
@@ -248,12 +414,16 @@ export default function ProductDetailScreen() {
               }}
             >
               {images.map((img: string, i: number) => (
-                <Image
-                  key={i}
-                  source={{ uri: getImageUrl(img) }}
-                  style={styles.image}
-                  contentFit="cover"
-                />
+                <Pressable key={i} onPress={() => setZoomImage(getImageUrl(img))}>
+                  <Image
+                    source={{ uri: getImageUrl(img) }}
+                    style={styles.image}
+                    contentFit="cover"
+                  />
+                  <View style={styles.zoomHint}>
+                    <Ionicons name="expand-outline" size={18} color="#fff" />
+                  </View>
+                </Pressable>
               ))}
             </ScrollView>
             {images.length > 1 && (
@@ -304,6 +474,44 @@ export default function ProductDetailScreen() {
               {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
             </Text>
           </View>
+
+          {hasSizes && (
+            <View style={styles.sizeSection}>
+              <Text style={styles.sizeLabel}>Select Size</Text>
+              <View style={styles.sizeRow}>
+                {productSizes.map((s) => {
+                  const isSelected = selectedSize === s.label;
+                  const outOfStock = s.stock <= 0;
+                  return (
+                    <Pressable
+                      key={s.label}
+                      style={[
+                        styles.sizeChip,
+                        isSelected && styles.sizeChipActive,
+                        outOfStock && styles.sizeChipDisabled,
+                      ]}
+                      onPress={() => {
+                        if (!outOfStock) {
+                          setSelectedSize(isSelected ? null : s.label);
+                          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      disabled={outOfStock}
+                    >
+                      <Text style={[
+                        styles.sizeChipText,
+                        isSelected && styles.sizeChipTextActive,
+                        outOfStock && styles.sizeChipTextDisabled,
+                      ]}>
+                        {s.label}
+                      </Text>
+                      {outOfStock && <Text style={styles.sizeOos}>Out of stock</Text>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {product.description ? (
             <View style={styles.descSection}>
@@ -420,7 +628,7 @@ export default function ProductDetailScreen() {
           </View>
           <Pressable
             style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.9 }]}
-            onPress={() => addToCartMutation.mutate()}
+            onPress={handleAddToCart}
             disabled={addToCartMutation.isPending}
           >
             {addToCartMutation.isPending ? (
@@ -441,6 +649,12 @@ export default function ProductDetailScreen() {
           </Pressable>
         </View>
       )}
+
+      <ImageZoomModal
+        visible={!!zoomImage}
+        imageUri={zoomImage || ""}
+        onClose={() => setZoomImage(null)}
+      />
     </View>
   );
 }
@@ -668,6 +882,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  zoomHint: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   dots: {
     flexDirection: "row",
     justifyContent: "center",
@@ -738,6 +963,54 @@ const styles = StyleSheet.create({
   stockText: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+  },
+  sizeSection: {
+    gap: 10,
+  },
+  sizeLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  sizeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  sizeChip: {
+    minWidth: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: "center",
+  },
+  sizeChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: "#E8F5E9",
+  },
+  sizeChipDisabled: {
+    opacity: 0.45,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  sizeChipText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  sizeChipTextActive: {
+    color: Colors.primary,
+  },
+  sizeChipTextDisabled: {
+    color: Colors.textLight,
+  },
+  sizeOos: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: Colors.error,
+    marginTop: 2,
   },
   descSection: {
     gap: 6,

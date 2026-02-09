@@ -103,12 +103,13 @@ export default function CheckoutScreen() {
   const cartItems = cartQuery.data || [];
 
   const orderItems = isBuyNow
-    ? [buyNowProduct!]
+    ? [{ ...buyNowProduct!, ...(params.size ? { size: params.size as string } : {}) }]
     : cartItems.map((item: any) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: item.product?.discountPrice || item.product?.price || 0,
         title: item.product?.title || "Product",
+        ...(item.size ? { size: item.size } : {}),
       }));
 
   const total = orderItems.reduce(
@@ -372,9 +373,14 @@ export default function CheckoutScreen() {
               const itemQty = isBuyNow ? buyNowQty : item.quantity;
               return (
                 <View key={item.id || index} style={styles.itemRow}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {itemQty}x {isBuyNow ? params.productTitle : item.product?.title}
-                  </Text>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {itemQty}x {isBuyNow ? params.productTitle : item.product?.title}
+                    </Text>
+                    {(isBuyNow ? params.size : item.size) ? (
+                      <Text style={styles.itemSize}>Size: {isBuyNow ? params.size : item.size}</Text>
+                    ) : null}
+                  </View>
                   <Text style={styles.itemPrice}>
                     {formatINR(itemPrice * itemQty)}
                   </Text>
@@ -610,11 +616,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   itemName: {
-    flex: 1,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
-    marginRight: 8,
+  },
+  itemSize: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.primary,
+    marginTop: 2,
   },
   itemPrice: {
     fontSize: 14,

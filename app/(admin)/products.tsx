@@ -34,6 +34,9 @@ export default function AdminProducts() {
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const AVAILABLE_SIZES = ["S", "M", "L", "XL", "XXL"];
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [sizeStocks, setSizeStocks] = useState<Record<string, string>>({});
 
   const productsQuery = useQuery({
     queryKey: ["admin", "products"],
@@ -84,6 +87,8 @@ export default function AdminProducts() {
     setCategoryId("");
     setImageUrl("");
     setIsActive(true);
+    setSelectedSizes([]);
+    setSizeStocks({});
     setShowModal(true);
   }
 
@@ -97,6 +102,11 @@ export default function AdminProducts() {
     setCategoryId(product.categoryId || "");
     setImageUrl(product.images?.[0] || "");
     setIsActive(product.isActive);
+    const sizes = product.sizes || [];
+    setSelectedSizes(sizes.map((s: any) => s.label));
+    const stocks: Record<string, string> = {};
+    sizes.forEach((s: any) => { stocks[s.label] = String(s.stock); });
+    setSizeStocks(stocks);
     setShowModal(true);
   }
 
@@ -120,6 +130,14 @@ export default function AdminProducts() {
     };
     if (discountPrice.trim()) data.discountPrice = parseFloat(discountPrice);
     if (categoryId) data.categoryId = categoryId;
+    if (selectedSizes.length > 0) {
+      data.sizes = selectedSizes.map((label) => ({
+        label,
+        stock: parseInt(sizeStocks[label] || "0") || 0,
+      }));
+    } else {
+      data.sizes = [];
+    }
     saveMutation.mutate(data);
   }
 
@@ -169,7 +187,7 @@ export default function AdminProducts() {
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
                   <Text style={styles.cardPrice}>{formatINR(item.price)}</Text>
-                  <Text style={styles.cardMeta}>Stock: {item.stock} | {item.isActive ? "Active" : "Inactive"}</Text>
+                  <Text style={styles.cardMeta}>Stock: {item.stock} | {item.isActive ? "Active" : "Inactive"}{item.sizes?.length > 0 ? ` | ${item.sizes.map((s: any) => s.label).join(", ")}` : ""}</Text>
                 </View>
                 <View style={styles.cardActions}>
                   <Pressable onPress={() => openEdit(item)}>
@@ -227,6 +245,47 @@ export default function AdminProducts() {
                 </View>
               )}
 
+              <View style={styles.sizesSection}>
+                <Text style={styles.pickerLabel}>Sizes (optional):</Text>
+                <View style={styles.sizeChips}>
+                  {AVAILABLE_SIZES.map((sz) => {
+                    const active = selectedSizes.includes(sz);
+                    return (
+                      <Pressable
+                        key={sz}
+                        style={[styles.catChip, active && styles.catChipActive]}
+                        onPress={() => {
+                          if (active) {
+                            setSelectedSizes(selectedSizes.filter((s) => s !== sz));
+                          } else {
+                            setSelectedSizes([...selectedSizes, sz]);
+                          }
+                        }}
+                      >
+                        <Text style={[styles.catChipText, active && styles.catChipTextActive]}>{sz}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {selectedSizes.length > 0 && (
+                  <View style={styles.sizeStockList}>
+                    {selectedSizes.map((sz) => (
+                      <View key={sz} style={styles.sizeStockRow}>
+                        <Text style={styles.sizeStockLabel}>{sz}</Text>
+                        <TextInput
+                          style={[styles.modalInput, { flex: 1 }]}
+                          placeholder="Stock"
+                          keyboardType="number-pad"
+                          value={sizeStocks[sz] || ""}
+                          onChangeText={(t) => setSizeStocks({ ...sizeStocks, [sz]: t })}
+                          placeholderTextColor={Colors.textLight}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
               <View style={styles.switchRow}>
                 <Text style={styles.switchLabel}>Active</Text>
                 <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: "#8B5CF6" }} />
@@ -281,6 +340,11 @@ const styles = StyleSheet.create({
   catChipActive: { backgroundColor: "#8B5CF6", borderColor: "#8B5CF6" },
   catChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.text },
   catChipTextActive: { color: Colors.white },
+  sizesSection: { gap: 8 },
+  sizeChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  sizeStockList: { gap: 8, marginTop: 4 },
+  sizeStockRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sizeStockLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text, width: 36 },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   switchLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.text },
   saveBtn: { backgroundColor: "#8B5CF6", borderRadius: 12, height: 48, justifyContent: "center", alignItems: "center", marginTop: 8 },
