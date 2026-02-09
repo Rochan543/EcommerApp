@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
+import fetch from "node-fetch";          // 👈 ADD HERE
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
