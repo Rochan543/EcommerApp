@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,20 @@ import {
   Dimensions,
   Platform,
   ScrollView,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -41,6 +43,43 @@ export default function HomeScreen() {
     queryKey: ["products"],
     queryFn: () => apiFetch("/api/products"),
   });
+
+  const announcementsQuery = useQuery({
+    queryKey: ["announcements", "active"],
+    queryFn: () => apiFetch("/api/announcements/active"),
+    enabled: !!user,
+  });
+
+  const [showAnnPopup, setShowAnnPopup] = useState(false);
+  const [currentAnnIndex, setCurrentAnnIndex] = useState(0);
+  const unviewedAnns: any[] = announcementsQuery.data || [];
+
+  const markViewedMutation = useMutation({
+    mutationFn: (announcementId: string) =>
+      apiFetch("/api/announcements/viewed", {
+        method: "POST",
+        body: JSON.stringify({ announcementId }),
+      }),
+  });
+
+  useEffect(() => {
+    if (unviewedAnns.length > 0 && !showAnnPopup) {
+      setCurrentAnnIndex(0);
+      setShowAnnPopup(true);
+    }
+  }, [unviewedAnns.length]);
+
+  function handleCloseAnn() {
+    const current = unviewedAnns[currentAnnIndex];
+    if (current) {
+      markViewedMutation.mutate(current.id);
+    }
+    if (currentAnnIndex < unviewedAnns.length - 1) {
+      setCurrentAnnIndex(currentAnnIndex + 1);
+    } else {
+      setShowAnnPopup(false);
+    }
+  }
 
   const isLoading = bannersQuery.isLoading || categoriesQuery.isLoading || productsQuery.isLoading;
 
@@ -198,6 +237,50 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+      {showAnnPopup && unviewedAnns.length > 0 && unviewedAnns[currentAnnIndex] && (
+        <Modal visible={showAnnPopup} transparent animationType="none" statusBarTranslucent>
+          <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.annOverlay}>
+            <Animated.View entering={SlideInDown.duration(400).springify()} exiting={SlideOutDown.duration(300)} style={styles.annPopup}>
+              <Pressable style={styles.annCloseBtn} onPress={handleCloseAnn}>
+                <Ionicons name="close" size={22} color={Colors.white} />
+              </Pressable>
+              {unviewedAnns[currentAnnIndex].image ? (
+                <Image
+                  source={{ uri: getImageUrl(unviewedAnns[currentAnnIndex].image) }}
+                  style={styles.annPopupImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.annPopupImagePlaceholder}>
+                  <View style={styles.annPopupIconWrap}>
+                    <Ionicons name="notifications" size={48} color={Colors.white} />
+                  </View>
+                </View>
+              )}
+              <View style={styles.annPopupContent}>
+                <Text style={styles.annPopupTitle}>{unviewedAnns[currentAnnIndex].title}</Text>
+                {unviewedAnns[currentAnnIndex].message ? (
+                  <ScrollView style={styles.annPopupMsgScroll} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.annPopupMessage}>{unviewedAnns[currentAnnIndex].message}</Text>
+                  </ScrollView>
+                ) : null}
+                {unviewedAnns.length > 1 && (
+                  <View style={styles.annDots}>
+                    {unviewedAnns.map((_: any, i: number) => (
+                      <View key={i} style={[styles.annDot, i === currentAnnIndex && styles.annDotActive]} />
+                    ))}
+                  </View>
+                )}
+                <Pressable style={styles.annGotItBtn} onPress={handleCloseAnn}>
+                  <Text style={styles.annGotItText}>
+                    {currentAnnIndex < unviewedAnns.length - 1 ? "Next" : "Got it"}
+                  </Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          </Animated.View>
+        </Modal>
+      )}
     </ScrollView>
   );
 }
@@ -415,5 +498,102 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+  },
+  annOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  annPopup: {
+    width: Math.min(width - 48, 380),
+    maxHeight: height * 0.78,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  annCloseBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  annPopupImage: {
+    width: "100%",
+    height: 200,
+  },
+  annPopupImagePlaceholder: {
+    width: "100%",
+    height: 160,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  annPopupIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  annPopupContent: {
+    padding: 20,
+    gap: 12,
+  },
+  annPopupTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+    textAlign: "center",
+  },
+  annPopupMsgScroll: {
+    maxHeight: 120,
+  },
+  annPopupMessage: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  annDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  annDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.borderLight,
+  },
+  annDotActive: {
+    backgroundColor: Colors.primary,
+    width: 20,
+  },
+  annGotItBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  annGotItText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
   },
 });
