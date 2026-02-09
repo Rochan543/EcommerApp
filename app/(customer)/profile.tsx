@@ -22,7 +22,6 @@ import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import { File } from "expo-file-system";
 import { fetch } from "expo/fetch";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ShippingAddress {
   fullName: string;
@@ -34,8 +33,6 @@ interface ShippingAddress {
   pincode: string;
   country: string;
 }
-
-const USER_KEY = "ecom_auth_user";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -99,6 +96,7 @@ export default function ProfileScreen() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -109,11 +107,11 @@ export default function ProfileScreen() {
       const meUrl = new URL("/api/auth/me", baseUrl).toString();
       const meRes = await fetch(meUrl, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
 
       if (meRes.ok) {
         const freshUser = await meRes.json();
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
         await updateProfile({ name: freshUser.name, phone: freshUser.phone || "" });
       }
 

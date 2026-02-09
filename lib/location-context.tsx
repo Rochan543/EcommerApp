@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "./auth-context";
 
 interface LocationData {
@@ -27,7 +26,6 @@ interface LocationContextValue {
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
-const LOCATION_ASKED_KEY = "ecom_location_asked";
 
 export function LocationProvider({ children }: { children: ReactNode }) {
   const { user, updateLocation } = useAuth();
@@ -49,26 +47,17 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           addressLine1: user.addressLine1 || "",
           addressLine2: user.addressLine2 || "",
         });
+        setPermissionAsked(true);
+        setShowPermissionPrompt(false);
+      } else {
+        setShowPermissionPrompt(!permissionAsked);
       }
-      checkIfShouldAskPermission();
     } else {
       setLocation(null);
       setShowPermissionPrompt(false);
+      setPermissionAsked(false);
     }
-  }, [user?.id]);
-
-  async function checkIfShouldAskPermission() {
-    try {
-      const asked = await AsyncStorage.getItem(LOCATION_ASKED_KEY);
-      if (asked) {
-        setPermissionAsked(true);
-        return;
-      }
-      if (user && (!user.city || !user.pincode)) {
-        setShowPermissionPrompt(true);
-      }
-    } catch {}
-  }
+  }, [user?.id, user?.city, user?.pincode]);
 
   async function reverseGeocode(lat: number, lng: number): Promise<Partial<LocationData>> {
     try {
@@ -125,7 +114,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           await updateLocation(locData);
         }
       }
-      await AsyncStorage.setItem(LOCATION_ASKED_KEY, "true");
       setPermissionAsked(true);
       setShowPermissionPrompt(false);
     } catch (err: any) {
@@ -166,7 +154,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }
 
   function denyLocationPermission() {
-    AsyncStorage.setItem(LOCATION_ASKED_KEY, "true");
     setPermissionAsked(true);
     setShowPermissionPrompt(false);
   }

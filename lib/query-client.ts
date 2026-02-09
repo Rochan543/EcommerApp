@@ -1,10 +1,5 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const TOKEN_KEY = "ecom_auth_token";
-const REFRESH_TOKEN_KEY = "ecom_refresh_token";
-const USER_KEY = "ecom_auth_user";
 
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
@@ -18,12 +13,10 @@ export function getApiUrl(): string {
   return url.href;
 }
 
-async function getStoredToken(): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+let memoryToken: string | null = null;
+
+export function setQueryToken(t: string | null) {
+  memoryToken = t;
 }
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -33,28 +26,22 @@ async function refreshAccessToken(): Promise<string | null> {
 
   refreshPromise = (async () => {
     try {
-      const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) return null;
-
       const baseUrl = getApiUrl();
       const url = new URL("/api/auth/refresh", baseUrl);
       const res = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({}),
+        credentials: "include",
       });
 
       if (!res.ok) {
-        await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+        memoryToken = null;
         return null;
       }
 
       const data = await res.json();
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-      if (data.user) {
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      }
+      memoryToken = data.token;
       return data.token as string;
     } catch {
       return null;
@@ -81,18 +68,18 @@ export async function apiRequest(
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
 
-  const token = await getStoredToken();
   const headers: Record<string, string> = {};
   if (data) headers["Content-Type"] = "application/json";
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (memoryToken) headers["Authorization"] = `Bearer ${memoryToken}`;
 
   const res = await fetch(url.toString(), {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
   });
 
-  if (res.status === 401 && token) {
+  if (res.status === 401) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       const retryHeaders: Record<string, string> = {};
@@ -103,6 +90,7 @@ export async function apiRequest(
         method,
         headers: retryHeaders,
         body: data ? JSON.stringify(data) : undefined,
+        credentials: "include",
       });
 
       await throwIfResNotOk(retryRes);
@@ -123,17 +111,17 @@ export const getQueryFn: <T>(options: {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
 
-    const token = await getStoredToken();
     const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (memoryToken) headers["Authorization"] = `Bearer ${memoryToken}`;
 
-    const res = await fetch(url.toString(), { headers });
+    const res = await fetch(url.toString(), { headers, credentials: "include" });
 
-    if (res.status === 401 && token) {
+    if (res.status === 401) {
       const newToken = await refreshAccessToken();
       if (newToken) {
         const retryRes = await fetch(url.toString(), {
           headers: { Authorization: `Bearer ${newToken}` },
+          credentials: "include",
         });
 
         if (unauthorizedBehavior === "returnNull" && retryRes.status === 401) {

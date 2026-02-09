@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from "react";
-import { Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 
@@ -35,10 +33,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = "ecom_auth_token";
-const REFRESH_TOKEN_KEY = "ecom_refresh_token";
-const USER_KEY = "ecom_auth_user";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -51,63 +45,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function restoreSession() {
     try {
-      const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
-      const storedUser = await AsyncStorage.getItem(USER_KEY);
+      const baseUrl = getApiUrl();
 
-      if (!storedRefreshToken) {
-        await clearAuth();
+      const refreshUrl = new URL("/api/auth/refresh", baseUrl);
+      const refreshRes = await fetch(refreshUrl.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+        credentials: "include",
+      });
+
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        setToken(data.token);
+        setUser(data.user);
         return;
       }
 
-      try {
-        const baseUrl = getApiUrl();
-        const url = new URL("/api/auth/refresh", baseUrl);
-        const res = await fetch(url.toString(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: storedRefreshToken }),
-        });
+      const meUrl = new URL("/api/auth/me", baseUrl);
+      const meRes = await fetch(meUrl.toString(), {
+        credentials: "include",
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          await AsyncStorage.setItem(TOKEN_KEY, data.token);
-          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
-          setToken(data.token);
-          setUser(data.user);
-          return;
-        }
-      } catch {}
-
-      if (storedToken && storedUser) {
-        try {
-          const baseUrl = getApiUrl();
-          const url = new URL("/api/auth/me", baseUrl);
-          const res = await fetch(url.toString(), {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
-
-          if (res.ok) {
-            const freshUser = await res.json();
-            await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
-            setToken(storedToken);
-            setUser(freshUser);
-            return;
-          }
-        } catch {}
+      if (meRes.ok) {
+        const freshUser = await meRes.json();
+        setUser(freshUser);
+        return;
       }
 
-      await clearAuth();
+      setToken(null);
+      setUser(null);
     } catch {
-      await clearAuth();
+      setToken(null);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   }
 
   async function clearAuth() {
-    await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+    try {
+      const baseUrl = getApiUrl();
+      const url = new URL("/api/auth/logout", baseUrl);
+      await fetch(url.toString(), { method: "POST", credentials: "include" });
+    } catch {}
     setToken(null);
     setUser(null);
   }
@@ -119,34 +100,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const promise = (async () => {
       try {
-        const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-        if (!storedRefreshToken) {
-          await clearAuth();
-          return null;
-        }
-
         const baseUrl = getApiUrl();
         const url = new URL("/api/auth/refresh", baseUrl);
         const res = await fetch(url.toString(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: storedRefreshToken }),
+          body: JSON.stringify({}),
+          credentials: "include",
         });
 
         if (!res.ok) {
-          await clearAuth();
+          setToken(null);
+          setUser(null);
           return null;
         }
 
         const data = await res.json();
-        await AsyncStorage.setItem(TOKEN_KEY, data.token);
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
         return data.token as string;
       } catch {
-        await clearAuth();
+        setToken(null);
+        setUser(null);
         return null;
       } finally {
         refreshPromiseRef.current = null;
@@ -158,10 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
-    const current = await AsyncStorage.getItem(TOKEN_KEY);
-    if (current) return current;
+    if (token) return token;
     return refreshAccessToken();
-  }, [refreshAccessToken]);
+  }, [token, refreshAccessToken]);
 
   async function login(email: string, password: string) {
     const baseUrl = getApiUrl();
@@ -170,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -178,9 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
-    await AsyncStorage.setItem(TOKEN_KEY, data.token);
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
   }
@@ -192,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, phone: phone || "" }),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -200,9 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
-    await AsyncStorage.setItem(TOKEN_KEY, data.token);
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
   }
@@ -223,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(data),
+      credentials: "include",
     });
 
     if (res.status === 401) {
@@ -235,13 +206,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           Authorization: `Bearer ${newToken}`,
         },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!retryRes.ok) {
         const d = await retryRes.json();
         throw new Error(d.message || "Update failed");
       }
       const updated = await retryRes.json();
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
       setUser(updated);
       return;
     }
@@ -252,7 +223,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const updated = await res.json();
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
     setUser(updated);
   }
 
@@ -268,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(data),
+      credentials: "include",
     });
 
     if (res.status === 401) {
@@ -280,13 +251,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           Authorization: `Bearer ${newToken}`,
         },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!retryRes.ok) {
         const d = await retryRes.json();
         throw new Error(d.message || "Update failed");
       }
       const updated = await retryRes.json();
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
       setUser(updated);
       return;
     }
@@ -297,7 +268,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const updated = await res.json();
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
     setUser(updated);
   }
 
