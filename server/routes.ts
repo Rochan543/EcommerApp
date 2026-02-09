@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+import Razorpay from "razorpay";
 import { storage } from "./storage";
 import {
   type AuthRequest,
@@ -21,6 +23,13 @@ import {
   insertOrderSchema,
   insertBannerSchema,
 } from "../shared/schema";
+
+function getRazorpayInstance() {
+  const key_id = process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) return null;
+  return new Razorpay({ key_id, key_secret });
+}
 
 const uploadDir = path.resolve(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -278,6 +287,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/products/:id/recommended", async (req, res) => {
+    try {
+      const product = await storage.getProductById(req.params.id);
+      if (!product || !product.categoryId) {
+        return res.json([]);
+      }
+      const recommended = await storage.getRecommendedProducts(
+        product.categoryId,
+        product.id,
+        6
+      );
+      return res.json(recommended);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/payment/create-order", authMiddleware as any, async (req: any, res) => {
+    try {
+      const razorpay = getRazorpayInstance();
+      if (!razorpay) {
+        return res.status(500).json({ message: "Payment gateway not configured" });
+      }
+
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      const options = {
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        receipt: `receipt_${Date.now()}`,
+      };
+
+      const order = await razorpay.orders.create(options);
+      return res.json({
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: process.env.RAZORPAY_KEY_ID,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || "Payment order creation failed" });
+    }
+  });
+
+  app.post("/api/payment/verify", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+      const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+      if (!key_secret) {
+        return res.status(500).json({ message: "Payment gateway not configured" });
+      }
+
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", key_secret)
+        .update(body)
+        .digest("hex");
+
+      if (expectedSignature === razorpay_signature) {
+        return res.json({ verified: true });
+      } else {
+        return res.status(400).json({ verified: false, message: "Payment verification failed" });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/orders", authMiddleware as any, async (req: any, res) => {
     try {
       const parsed = insertOrderSchema.safeParse(req.body);
@@ -285,12 +366,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
       }
 
-      const order = await storage.createOrder({
+      const orderData: any = {
         userId: req.user.id,
         ...parsed.data,
-      });
+      };
 
-      await storage.clearCart(req.user.id);
+      if (parsed.data.paymentMethod === "cod") {
+        orderData.paymentStatus = "pending";
+      }
+
+      const order = await storage.createOrder(orderData);
+
+      if (!req.body.skipCartClear) {
+        await storage.clearCart(req.user.id);
+      }
       return res.status(201).json(order);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

@@ -52,6 +52,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
+    "razorpay": "^2.9.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
