@@ -10,6 +10,7 @@ import {
   supportTickets,
   announcements,
   announcementViews,
+  reviews,
   type User,
   type InsertUser,
   type Category,
@@ -20,6 +21,7 @@ import {
   type SupportTicket,
   type Announcement,
   type AnnouncementView,
+  type Review,
 } from "../shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -446,6 +448,44 @@ export class Storage {
     if (existing.length === 0) {
       await db.insert(announcementViews).values({ userId, announcementId });
     }
+  }
+
+  async getReviewsByProduct(productId: string): Promise<Review[]> {
+    return db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.productId, productId))
+      .orderBy(desc(reviews.createdAt));
+  }
+
+  async getUserReviewForProduct(userId: string, productId: string): Promise<Review | undefined> {
+    const [review] = await db
+      .select()
+      .from(reviews)
+      .where(and(eq(reviews.userId, userId), eq(reviews.productId, productId)));
+    return review;
+  }
+
+  async createReview(data: {
+    productId: string;
+    userId: string;
+    userName: string;
+    rating: number;
+    comment?: string;
+  }): Promise<Review> {
+    const [review] = await db
+      .insert(reviews)
+      .values(data)
+      .returning();
+    return review;
+  }
+
+  async deleteReview(id: string): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
+  }
+
+  async getAllReviews(): Promise<Review[]> {
+    return db.select().from(reviews).orderBy(desc(reviews.createdAt));
   }
 }
 

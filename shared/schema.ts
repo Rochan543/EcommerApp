@@ -243,6 +243,27 @@ export const insertAnnouncementSchema = z.object({
   endDate: z.string(),
 });
 
+export const reviews = pgTable("reviews", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  productId: varchar("product_id")
+    .notNull()
+    .references(() => products.id, { onDelete: "cascade" }),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  userName: text("user_name").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReviewSchema = z.object({
+  rating: z.number().min(1).max(5),
+  comment: z.string().optional(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Category = typeof categories.$inferSelect;
@@ -253,3 +274,4 @@ export type Banner = typeof banners.$inferSelect;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type AnnouncementView = typeof announcementViews.$inferSelect;
+export type Review = typeof reviews.$inferSelect;

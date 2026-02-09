@@ -26,6 +26,7 @@ import {
   insertBannerSchema,
   insertTicketSchema,
   insertAnnouncementSchema,
+  insertReviewSchema,
 } from "../shared/schema";
 
 function getRazorpayInstance() {
@@ -359,6 +360,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category: p.categoryId,
       }));
       return res.json(shaped);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/products/:id/reviews", async (req, res) => {
+    try {
+      const reviewsList = await storage.getReviewsByProduct(req.params.id);
+      return res.json(reviewsList);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/products/:id/review", authMiddleware as any, async (req: any, res) => {
+    try {
+      const parsed = insertReviewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+
+      const existing = await storage.getUserReviewForProduct(req.user.id, req.params.id);
+      if (existing) {
+        return res.status(400).json({ message: "You have already reviewed this product" });
+      }
+
+      const product = await storage.getProductById(req.params.id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const review = await storage.createReview({
+        productId: req.params.id,
+        userId: req.user.id,
+        userName: req.user.name,
+        rating: parsed.data.rating,
+        comment: parsed.data.comment || "",
+      });
+
+      return res.status(201).json(review);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/reviews", authMiddleware as any, adminMiddleware as any, async (_req: any, res) => {
+    try {
+      const allReviews = await storage.getAllReviews();
+      return res.json(allReviews);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/reviews/:id", authMiddleware as any, adminMiddleware as any, async (req: any, res) => {
+    try {
+      await storage.deleteReview(req.params.id);
+      return res.json({ message: "Review deleted" });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
