@@ -21,6 +21,15 @@ export const users = pgTable("users", {
   phone: text("phone").default(""),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"),
+  fullName: text("full_name").default(""),
+  addressLine1: text("address_line1").default(""),
+  addressLine2: text("address_line2").default(""),
+  city: text("city").default(""),
+  state: text("state").default(""),
+  pincode: text("pincode").default(""),
+  country: text("country").default("India"),
+  otpCode: text("otp_code"),
+  otpExpiresAt: timestamp("otp_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -74,6 +83,17 @@ export const orders = pgTable("orders", {
     state: string;
     pincode: string;
   }>(),
+  trackingSteps: jsonb("tracking_steps").$type<{
+    step: string;
+    completed: boolean;
+    completedAt?: string;
+  }[]>().default([
+    { step: "Ordered", completed: true, completedAt: new Date().toISOString() },
+    { step: "Packed", completed: false },
+    { step: "Shipped", completed: false },
+    { step: "Out for Delivery", completed: false },
+    { step: "Delivered", completed: false },
+  ]),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -98,6 +118,22 @@ export const banners = pgTable("banners", {
   image: text("image").default(""),
   link: text("link").default(""),
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  category: text("category").notNull().default("General"),
+  orderId: text("order_id"),
+  status: text("status").notNull().default("open"),
+  adminReply: text("admin_reply"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -162,6 +198,13 @@ export const insertBannerSchema = createInsertSchema(banners).pick({
   isActive: true,
 });
 
+export const insertTicketSchema = z.object({
+  subject: z.string().min(1),
+  message: z.string().min(1),
+  category: z.string(),
+  orderId: z.string().optional(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Category = typeof categories.$inferSelect;
@@ -169,3 +212,4 @@ export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Banner = typeof banners.$inferSelect;
+export type SupportTicket = typeof supportTickets.$inferSelect;

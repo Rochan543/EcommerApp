@@ -1,0 +1,123 @@
+You are enhancing an existing eCommerce application.
+
+Implement ONLY the following features:
+
+--------------------------------------------------
+1. ADD SHIPPING DETAILS IN PERSONAL PROFILE
+--------------------------------------------------
+- Extend User model:
+    - fullName
+    - phone
+    - addressLine1
+    - addressLine2
+    - city
+    - state
+    - pincode
+    - country
+
+- Profile Page:
+    - View shipping details
+    - Edit shipping details
+    - Save to database
+    - Auto-fill at checkout
+
+--------------------------------------------------
+2. AI CHATBOT + SUPPORT TICKET SYSTEM
+--------------------------------------------------
+
+User Side:
+- Floating chat icon on all pages.
+- Chat window allows:
+    - Ask general questions (AI response)
+    - Button: "Raise Support Ticket"
+
+Ticket Form:
+- Subject
+- Message
+- OrderId (optional)
+- Category (Payment, Delivery, Product, Account)
+
+Backend:
+- Ticket Model:
+    - userId
+    - subject
+    - message
+    - category
+    - status (open, in-progress, resolved)
+    - adminReply
+    - createdAt
+
+Admin Side:
+- View all tickets.
+- Filter by status.
+- Open ticket and reply.
+- Change ticket status.
+
+--------------------------------------------------
+3. EMAIL RESPONSE VIA EMAILJS
+--------------------------------------------------
+- When admin replies:
+    - Send email to user with solution.
+- Email contains:
+    - Ticket ID
+    - User name
+    - Admin response.
+
+--------------------------------------------------
+4. AMAZON-STYLE ORDER TRACKING
+--------------------------------------------------
+
+Order model add:
+- trackingSteps: [
+    Ordered,
+    Packed,
+    Shipped,
+    Out for Delivery,
+    Delivered
+]
+
+User UI:
+- Timeline style tracking bar.
+- Highlight current step.
+- Show date/time.
+
+Admin UI:
+- Dropdown to update tracking step.
+
+--------------------------------------------------
+5. FORGOT PASSWORD WITH OTP
+--------------------------------------------------
+
+Flow:
+- Enter email
+- Generate 6-digit OTP
+- Send OTP via email
+- Verify OTP
+- Enter new password
+- Hash password and update DB
+
+OTP Rules:
+- Expiry: 10 minutes
+- One-time use
+
+--------------------------------------------------
+6. SPLASH SCREEN WITH LOGO
+--------------------------------------------------
+
+Mobile App:
+- Show logo for 2–3 seconds.
+- Then:
+    - If logged in → Home
+    - Else → Login
+
+--------------------------------------------------
+FINAL RESULT
+--------------------------------------------------
+- Users can save shipping details.
+- Users can chat or raise tickets.
+- Admin can reply and email users.
+- Orders show tracking like Amazon.
+- Forgot password works with OTP.
+- Splash screen displays correctly.
+
+Apply changes and return only modified files.

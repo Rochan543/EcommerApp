@@ -7,6 +7,7 @@ import {
   orders,
   cartItems,
   banners,
+  supportTickets,
   type User,
   type InsertUser,
   type Category,
@@ -14,6 +15,7 @@ import {
   type Order,
   type CartItem,
   type Banner,
+  type SupportTicket,
 } from "../shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -44,6 +46,19 @@ export class Storage {
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async setOtp(userId: string, otpCode: string, expiresAt: Date): Promise<void> {
+    await db.update(users).set({ otpCode, otpExpiresAt: expiresAt }).where(eq(users.id, userId));
+  }
+
+  async clearOtp(userId: string): Promise<void> {
+    await db.update(users).set({ otpCode: null, otpExpiresAt: null }).where(eq(users.id, userId));
   }
 
   async createCategory(data: Partial<Category>): Promise<Category> {
@@ -178,6 +193,7 @@ export class Storage {
     razorpayPaymentId?: string;
     shippingAddress?: any;
   }): Promise<Order> {
+    const now = new Date().toISOString();
     const [order] = await db
       .insert(orders)
       .values({
@@ -189,6 +205,13 @@ export class Storage {
         razorpayOrderId: data.razorpayOrderId,
         razorpayPaymentId: data.razorpayPaymentId,
         shippingAddress: data.shippingAddress,
+        trackingSteps: [
+          { step: "Ordered", completed: true, completedAt: now },
+          { step: "Packed", completed: false },
+          { step: "Shipped", completed: false },
+          { step: "Out for Delivery", completed: false },
+          { step: "Delivered", completed: false },
+        ],
       })
       .returning();
     return order;
@@ -251,6 +274,15 @@ export class Storage {
     return order;
   }
 
+  async updateOrderTracking(id: string, trackingSteps: any[]): Promise<Order | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set({ trackingSteps })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
+  }
+
   async createBanner(data: Partial<Banner>): Promise<Banner> {
     const [banner] = await db.insert(banners).values(data as any).returning();
     return banner;
@@ -281,21 +313,64 @@ export class Storage {
     await db.delete(banners).where(eq(banners.id, id));
   }
 
+  async createTicket(data: {
+    userId: string;
+    subject: string;
+    message: string;
+    category: string;
+    orderId?: string;
+  }): Promise<SupportTicket> {
+    const [ticket] = await db
+      .insert(supportTickets)
+      .values(data)
+      .returning();
+    return ticket;
+  }
+
+  async getTicketsByUser(userId: string): Promise<SupportTicket[]> {
+    return db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async getAllTickets(): Promise<SupportTicket[]> {
+    return db.select().from(supportTickets).orderBy(desc(supportTickets.createdAt));
+  }
+
+  async getTicketById(id: string): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, id));
+    return ticket;
+  }
+
+  async updateTicket(id: string, data: Partial<SupportTicket>): Promise<SupportTicket | undefined> {
+    const [ticket] = await db
+      .update(supportTickets)
+      .set(data)
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return ticket;
+  }
+
   async getDashboardStats(): Promise<{
     totalUsers: number;
     totalProducts: number;
     totalOrders: number;
     totalRevenue: number;
+    totalTickets: number;
   }> {
     const allUsers = await db.select().from(users);
     const allProducts = await db.select().from(products);
     const allOrders = await db.select().from(orders);
+    const allTickets = await db.select().from(supportTickets);
     const totalRevenue = allOrders.reduce((sum, o) => sum + o.totalAmount, 0);
     return {
       totalUsers: allUsers.length,
       totalProducts: allProducts.length,
       totalOrders: allOrders.length,
       totalRevenue,
+      totalTickets: allTickets.length,
     };
   }
 }
