@@ -34,6 +34,7 @@ export default function LoginScreen() {
     try {
       await login(email.trim().toLowerCase(), password);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/");
     } catch (err: any) {
       Alert.alert("Login Failed", err.message || "Invalid credentials");
     } finally {
