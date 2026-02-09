@@ -287,9 +287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/:id/recommended", async (req, res) => {
+  app.get("/api/products/recommended/:productId", async (req, res) => {
     try {
-      const product = await storage.getProductById(req.params.id);
+      const product = await storage.getProductById(req.params.productId);
       if (!product || !product.categoryId) {
         return res.json([]);
       }
@@ -298,7 +298,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         product.id,
         6
       );
-      return res.json(recommended);
+      const shaped = recommended.map((p) => ({
+        _id: p.id,
+        title: p.title,
+        price: p.discountPrice ?? p.price,
+        image: (p.images && p.images.length > 0) ? p.images[0] : null,
+        category: p.categoryId,
+      }));
+      return res.json(shaped);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
