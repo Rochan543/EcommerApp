@@ -1,14 +1,15 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import Constants from "expo-constants";
 
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
+  let host = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL;
 
   if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    throw new Error("EXPO_PUBLIC_API_BASE_URL is not set");
   }
 
-  let url = new URL(`https://${host}`);
+  let url = new URL(host);
 
   return url.href;
 }
