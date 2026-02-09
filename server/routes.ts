@@ -1,11 +1,547 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
+import bcrypt from "bcryptjs";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { storage } from "./storage";
+import {
+  type AuthRequest,
+  authMiddleware,
+  adminMiddleware,
+  generateToken,
+} from "./middleware";
+import {
+  insertUserSchema,
+  loginSchema,
+  insertCategorySchema,
+  insertProductSchema,
+  insertOrderSchema,
+  insertBannerSchema,
+} from "../shared/schema";
+
+const uploadDir = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const multerStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: multerStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) return cb(null, true);
+    cb(new Error("Only image files are allowed"));
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  app.use("/uploads", (req, res, next) => {
+    const filePath = path.join(uploadDir, req.path);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+    next();
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const parsed = insertUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+
+      const existing = await storage.getUserByEmail(parsed.data.email);
+      if (existing) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      const user = await storage.createUser(parsed.data);
+      const token = generateToken({ id: user.id, role: user.role, email: user.email });
+      return res.status(201).json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || "Server error" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input" });
+      }
+
+      const user = await storage.getUserByEmail(parsed.data.email);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const isMatch = await bcrypt.compare(parsed.data.password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const token = generateToken({ id: user.id, role: user.role, email: user.email });
+      return res.json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || "Server error" });
+    }
+  });
+
+  app.get("/api/auth/me", authMiddleware as any, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/auth/profile", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { name, phone } = req.body;
+      const user = await storage.updateUser(req.user.id, { name, phone });
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/categories", async (_req, res) => {
+    try {
+      const cats = await storage.getActiveCategories();
+      return res.json(cats);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/categories/:id", async (req, res) => {
+    try {
+      const cat = await storage.getCategoryById(req.params.id);
+      if (!cat) return res.status(404).json({ message: "Category not found" });
+      return res.json(cat);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/products", async (_req, res) => {
+    try {
+      const prods = await storage.getActiveProducts();
+      return res.json(prods);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const prod = await storage.getProductById(req.params.id);
+      if (!prod) return res.status(404).json({ message: "Product not found" });
+      return res.json(prod);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/products/category/:categoryId", async (req, res) => {
+    try {
+      const prods = await storage.getProductsByCategory(req.params.categoryId);
+      return res.json(prods.filter((p) => p.isActive));
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/banners", async (_req, res) => {
+    try {
+      const b = await storage.getActiveBanners();
+      return res.json(b);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/cart", authMiddleware as any, async (req: any, res) => {
+    try {
+      const items = await storage.getCartItems(req.user.id);
+      const enriched = await Promise.all(
+        items.map(async (item) => {
+          const product = await storage.getProductById(item.productId);
+          return { ...item, product };
+        })
+      );
+      return res.json(enriched.filter((i) => i.product));
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/cart", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { productId, quantity } = req.body;
+      if (!productId) return res.status(400).json({ message: "Product ID required" });
+      const item = await storage.addToCart(req.user.id, productId, quantity || 1);
+      return res.status(201).json(item);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/cart/:id", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { quantity } = req.body;
+      const item = await storage.updateCartItem(req.params.id, quantity);
+      if (!item) return res.status(404).json({ message: "Cart item not found" });
+      return res.json(item);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/cart/:id", authMiddleware as any, async (req: any, res) => {
+    try {
+      await storage.removeCartItem(req.params.id);
+      return res.json({ message: "Item removed" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/orders", authMiddleware as any, async (req: any, res) => {
+    try {
+      const parsed = insertOrderSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+
+      const order = await storage.createOrder({
+        userId: req.user.id,
+        ...parsed.data,
+      });
+
+      await storage.clearCart(req.user.id);
+      return res.status(201).json(order);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/orders", authMiddleware as any, async (req: any, res) => {
+    try {
+      const userOrders = await storage.getOrdersByUser(req.user.id);
+      return res.json(userOrders);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/orders/:id", authMiddleware as any, async (req: any, res) => {
+    try {
+      const order = await storage.getOrderById(req.params.id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      return res.json(order);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/upload", authMiddleware as any, upload.single("image"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const imageUrl = `/uploads/${req.file.filename}`;
+      return res.json({ url: imageUrl });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get(
+    "/api/admin/categories",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const cats = await storage.getAllCategories();
+        return res.json(cats);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/categories",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const parsed = insertCategorySchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+        }
+        const category = await storage.createCategory(parsed.data);
+        return res.status(201).json(category);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/categories/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const category = await storage.updateCategory(req.params.id, req.body);
+        if (!category) return res.status(404).json({ message: "Category not found" });
+        return res.json(category);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/categories/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        await storage.deleteCategory(req.params.id);
+        return res.json({ message: "Category deleted" });
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/products",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const prods = await storage.getAllProducts();
+        return res.json(prods);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/products",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const parsed = insertProductSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+        }
+        const product = await storage.createProduct(parsed.data);
+        return res.status(201).json(product);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/products/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const product = await storage.updateProduct(req.params.id, req.body);
+        if (!product) return res.status(404).json({ message: "Product not found" });
+        return res.json(product);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/products/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        await storage.deleteProduct(req.params.id);
+        return res.json({ message: "Product deleted" });
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/orders",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const allOrders = await storage.getAllOrders();
+        const enriched = await Promise.all(
+          allOrders.map(async (o) => {
+            const user = await storage.getUserById(o.userId);
+            return { ...o, userName: user?.name || "Unknown" };
+          })
+        );
+        return res.json(enriched);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/orders/:id/status",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const { status } = req.body;
+        const order = await storage.updateOrderStatus(req.params.id, status);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+        return res.json(order);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/users",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const allUsers = await storage.getAllUsers();
+        const safe = allUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phone: u.phone,
+          createdAt: u.createdAt,
+        }));
+        return res.json(safe);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/banners",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const b = await storage.getAllBanners();
+        return res.json(b);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/banners",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const parsed = insertBannerSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+        }
+        const banner = await storage.createBanner(parsed.data);
+        return res.status(201).json(banner);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/banners/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const banner = await storage.updateBanner(req.params.id, req.body);
+        if (!banner) return res.status(404).json({ message: "Banner not found" });
+        return res.json(banner);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/banners/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        await storage.deleteBanner(req.params.id);
+        return res.json({ message: "Banner deleted" });
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/dashboard",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const stats = await storage.getDashboardStats();
+        return res.json(stats);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
