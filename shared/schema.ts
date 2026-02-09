@@ -199,11 +199,46 @@ export const insertBannerSchema = createInsertSchema(banners).pick({
   isActive: true,
 });
 
+export const announcements = pgTable("announcements", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  message: text("message").notNull().default(""),
+  image: text("image").default(""),
+  isActive: boolean("is_active").notNull().default(true),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  endDate: timestamp("end_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const announcementViews = pgTable("announcement_views", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  announcementId: varchar("announcement_id")
+    .notNull()
+    .references(() => announcements.id, { onDelete: "cascade" }),
+  viewedAt: timestamp("viewed_at").defaultNow(),
+});
+
 export const insertTicketSchema = z.object({
   subject: z.string().min(1),
   message: z.string().min(1),
   category: z.string(),
   orderId: z.string().optional(),
+});
+
+export const insertAnnouncementSchema = z.object({
+  title: z.string().min(1),
+  message: z.string().optional(),
+  image: z.string().optional(),
+  isActive: z.boolean().optional(),
+  startDate: z.string(),
+  endDate: z.string(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -214,3 +249,5 @@ export type Order = typeof orders.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Banner = typeof banners.$inferSelect;
 export type SupportTicket = typeof supportTickets.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
+export type AnnouncementView = typeof announcementViews.$inferSelect;

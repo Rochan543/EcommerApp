@@ -1,4 +1,4 @@
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc, and, ne, lte, gte, notInArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -8,6 +8,8 @@ import {
   cartItems,
   banners,
   supportTickets,
+  announcements,
+  announcementViews,
   type User,
   type InsertUser,
   type Category,
@@ -16,6 +18,8 @@ import {
   type CartItem,
   type Banner,
   type SupportTicket,
+  type Announcement,
+  type AnnouncementView,
 } from "../shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -372,6 +376,76 @@ export class Storage {
       totalRevenue,
       totalTickets: allTickets.length,
     };
+  }
+
+  async createAnnouncement(data: {
+    title: string;
+    message?: string;
+    image?: string;
+    isActive?: boolean;
+    startDate: Date;
+    endDate: Date;
+  }): Promise<Announcement> {
+    const [ann] = await db.insert(announcements).values(data).returning();
+    return ann;
+  }
+
+  async getAllAnnouncements(): Promise<Announcement[]> {
+    return db.select().from(announcements).orderBy(desc(announcements.createdAt));
+  }
+
+  async getAnnouncementById(id: string): Promise<Announcement | undefined> {
+    const [ann] = await db.select().from(announcements).where(eq(announcements.id, id));
+    return ann;
+  }
+
+  async updateAnnouncement(id: string, data: Partial<Announcement>): Promise<Announcement | undefined> {
+    const [ann] = await db.update(announcements).set(data).where(eq(announcements.id, id)).returning();
+    return ann;
+  }
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  async getActiveAnnouncementsForUser(userId: string): Promise<Announcement[]> {
+    const now = new Date();
+    const viewedRows = await db
+      .select({ announcementId: announcementViews.announcementId })
+      .from(announcementViews)
+      .where(eq(announcementViews.userId, userId));
+    const viewedIds = viewedRows.map((r) => r.announcementId);
+
+    const conditions = [
+      eq(announcements.isActive, true),
+      lte(announcements.startDate, now),
+      gte(announcements.endDate, now),
+    ];
+
+    if (viewedIds.length > 0) {
+      conditions.push(notInArray(announcements.id, viewedIds));
+    }
+
+    return db
+      .select()
+      .from(announcements)
+      .where(and(...conditions))
+      .orderBy(desc(announcements.createdAt));
+  }
+
+  async markAnnouncementViewed(userId: string, announcementId: string): Promise<void> {
+    const existing = await db
+      .select()
+      .from(announcementViews)
+      .where(
+        and(
+          eq(announcementViews.userId, userId),
+          eq(announcementViews.announcementId, announcementId)
+        )
+      );
+    if (existing.length === 0) {
+      await db.insert(announcementViews).values({ userId, announcementId });
+    }
   }
 }
 
