@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json({
         token,
         refreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
+        user: serializeUser(user),
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
@@ -116,25 +116,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         token,
         refreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
+        user: serializeUser(user),
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
     }
   });
 
+  function serializeUser(user: any) {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      profileImage: user.profileImage || "",
+      city: user.city || "",
+      state: user.state || "",
+      pincode: user.pincode || "",
+      country: user.country || "India",
+      latitude: user.latitude || null,
+      longitude: user.longitude || null,
+      addressLine1: user.addressLine1 || "",
+      addressLine2: user.addressLine2 || "",
+    };
+  }
+
   app.get("/api/auth/me", authMiddleware as any, async (req: any, res) => {
     try {
       const user = await storage.getUserById(req.user.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      return res.json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        profileImage: user.profileImage || "",
-      });
+      return res.json(serializeUser(user));
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -164,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         token: newAccessToken,
         refreshToken: newRefreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
+        user: serializeUser(user),
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
@@ -176,14 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { name, phone } = req.body;
       const user = await storage.updateUser(req.user.id, { name, phone });
       if (!user) return res.status(404).json({ message: "User not found" });
-      return res.json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        profileImage: user.profileImage || "",
-      });
+      return res.json(serializeUser(user));
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -195,14 +200,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageUrl = `/uploads/${req.file.filename}`;
       const user = await storage.updateUser(req.user.id, { profileImage: imageUrl });
       if (!user) return res.status(404).json({ message: "User not found" });
-      return res.json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        profileImage: user.profileImage || "",
-      });
+      return res.json(serializeUser(user));
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/auth/location", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { city, state, pincode, country, latitude, longitude, addressLine1, addressLine2 } = req.body;
+      const updateData: any = {};
+      if (city !== undefined) updateData.city = city;
+      if (state !== undefined) updateData.state = state;
+      if (pincode !== undefined) updateData.pincode = pincode;
+      if (country !== undefined) updateData.country = country;
+      if (latitude !== undefined) updateData.latitude = latitude;
+      if (longitude !== undefined) updateData.longitude = longitude;
+      if (addressLine1 !== undefined) updateData.addressLine1 = addressLine1;
+      if (addressLine2 !== undefined) updateData.addressLine2 = addressLine2;
+      const user = await storage.updateUser(req.user.id, updateData);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json(serializeUser(user));
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

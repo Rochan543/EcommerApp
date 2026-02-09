@@ -11,6 +11,8 @@ import {
   Platform,
   ScrollView,
   Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -20,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useLocation } from "@/lib/location-context";
 import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
@@ -28,6 +31,21 @@ const { width, height } = Dimensions.get("window");
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const {
+    location,
+    isDetecting,
+    showPermissionPrompt,
+    requestLocationPermission,
+    denyLocationPermission,
+    updateManualLocation,
+  } = useLocation();
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [manualCity, setManualCity] = useState("");
+  const [manualPincode, setManualPincode] = useState("");
+  const [manualState, setManualState] = useState("");
+  const [manualAddr1, setManualAddr1] = useState("");
+  const [manualAddr2, setManualAddr2] = useState("");
+  const [savingLocation, setSavingLocation] = useState(false);
 
   const bannersQuery = useQuery({
     queryKey: ["banners"],
@@ -81,6 +99,33 @@ export default function HomeScreen() {
     }
   }
 
+  function openLocationModal() {
+    setManualCity(location?.city || "");
+    setManualPincode(location?.pincode || "");
+    setManualState(location?.state || "");
+    setManualAddr1(location?.addressLine1 || "");
+    setManualAddr2(location?.addressLine2 || "");
+    setShowLocationModal(true);
+  }
+
+  async function handleSaveLocation() {
+    if (!manualCity.trim() || !manualPincode.trim()) return;
+    setSavingLocation(true);
+    try {
+      await updateManualLocation({
+        city: manualCity.trim(),
+        state: manualState.trim(),
+        pincode: manualPincode.trim(),
+        addressLine1: manualAddr1.trim(),
+        addressLine2: manualAddr2.trim(),
+        country: "India",
+      });
+      setShowLocationModal(false);
+    } catch {} finally {
+      setSavingLocation(false);
+    }
+  }
+
   const isLoading = bannersQuery.isLoading || categoriesQuery.isLoading || productsQuery.isLoading;
 
   const onRefresh = useCallback(() => {
@@ -109,11 +154,48 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>Hello, {user?.name || "there"}</Text>
-          <Text style={styles.headerSubtitle}>Find something you love</Text>
+          {location?.city ? (
+            <Pressable onPress={openLocationModal} style={styles.deliverRow}>
+              <Ionicons name="location-sharp" size={14} color={Colors.primary} />
+              <Text style={styles.deliverLabel}>Deliver to: </Text>
+              <Text style={styles.deliverValue} numberOfLines={1}>
+                {location.city}{location.pincode ? ` ${location.pincode}` : ""}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+            </Pressable>
+          ) : (
+            <Pressable onPress={openLocationModal} style={styles.deliverRow}>
+              <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
+              <Text style={styles.deliverLabel}>Set delivery location</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+            </Pressable>
+          )}
         </View>
       </View>
+
+      {showPermissionPrompt && (
+        <View style={styles.locPermBanner}>
+          <View style={styles.locPermIconWrap}>
+            <Ionicons name="navigate" size={20} color={Colors.white} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.locPermTitle}>Allow location access</Text>
+            <Text style={styles.locPermDesc}>For better delivery experience</Text>
+          </View>
+          <Pressable style={styles.locPermAllowBtn} onPress={requestLocationPermission} disabled={isDetecting}>
+            {isDetecting ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <Text style={styles.locPermAllowText}>Allow</Text>
+            )}
+          </Pressable>
+          <Pressable onPress={denyLocationPermission} style={styles.locPermDenyBtn}>
+            <Ionicons name="close" size={18} color={Colors.textSecondary} />
+          </Pressable>
+        </View>
+      )}
 
       {banners.length > 0 && (
         <ScrollView
@@ -281,6 +363,63 @@ export default function HomeScreen() {
           </Animated.View>
         </Modal>
       )}
+
+      <Modal visible={showLocationModal} transparent animationType="none" statusBarTranslucent>
+        <Animated.View entering={FadeIn.duration(200)} style={styles.annOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", alignItems: "center" }}>
+            <Animated.View entering={SlideInDown.duration(350).springify()} style={styles.locModal}>
+              <View style={styles.locModalHeader}>
+                <Ionicons name="location" size={22} color={Colors.primary} />
+                <Text style={styles.locModalTitle}>Change Delivery Location</Text>
+                <Pressable onPress={() => setShowLocationModal(false)}>
+                  <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.locDetectBtn} onPress={async () => { await requestLocationPermission(); setShowLocationModal(false); }} disabled={isDetecting}>
+                <Ionicons name="navigate" size={18} color={Colors.primary} />
+                <Text style={styles.locDetectText}>{isDetecting ? "Detecting..." : "Use current location"}</Text>
+                {isDetecting && <ActivityIndicator size="small" color={Colors.primary} />}
+              </Pressable>
+
+              <View style={styles.locDivider}>
+                <View style={styles.locDividerLine} />
+                <Text style={styles.locDividerText}>OR</Text>
+                <View style={styles.locDividerLine} />
+              </View>
+
+              <View style={styles.locFormGroup}>
+                <Text style={styles.locFormLabel}>City *</Text>
+                <TextInput style={styles.locFormInput} value={manualCity} onChangeText={setManualCity} placeholder="e.g. Hyderabad" placeholderTextColor={Colors.textLight} />
+              </View>
+              <View style={styles.locFormGroup}>
+                <Text style={styles.locFormLabel}>Pincode *</Text>
+                <TextInput style={styles.locFormInput} value={manualPincode} onChangeText={setManualPincode} placeholder="e.g. 500001" placeholderTextColor={Colors.textLight} keyboardType="number-pad" maxLength={6} />
+              </View>
+              <View style={styles.locFormGroup}>
+                <Text style={styles.locFormLabel}>State</Text>
+                <TextInput style={styles.locFormInput} value={manualState} onChangeText={setManualState} placeholder="e.g. Telangana" placeholderTextColor={Colors.textLight} />
+              </View>
+              <View style={styles.locFormGroup}>
+                <Text style={styles.locFormLabel}>Address Line 1</Text>
+                <TextInput style={styles.locFormInput} value={manualAddr1} onChangeText={setManualAddr1} placeholder="Street, area" placeholderTextColor={Colors.textLight} />
+              </View>
+              <View style={styles.locFormGroup}>
+                <Text style={styles.locFormLabel}>Address Line 2</Text>
+                <TextInput style={styles.locFormInput} value={manualAddr2} onChangeText={setManualAddr2} placeholder="Landmark, nearby" placeholderTextColor={Colors.textLight} />
+              </View>
+
+              <Pressable style={[styles.locSaveBtn, (!manualCity.trim() || !manualPincode.trim()) && { opacity: 0.5 }]} onPress={handleSaveLocation} disabled={savingLocation || !manualCity.trim() || !manualPincode.trim()}>
+                {savingLocation ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.locSaveBtnText}>Save Location</Text>
+                )}
+              </Pressable>
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </Animated.View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -593,6 +732,151 @@ const styles = StyleSheet.create({
   },
   annGotItText: {
     fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  deliverRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  deliverLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  deliverValue: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+    maxWidth: 180,
+  },
+  locPermBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  locPermIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  locPermTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  locPermDesc: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  locPermAllowBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  locPermAllowText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  locPermDenyBtn: {
+    padding: 4,
+  },
+  locModal: {
+    width: Math.min(width - 32, 400),
+    maxHeight: height * 0.85,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    gap: 14,
+  },
+  locModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  locModalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+  },
+  locDetectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#E8F8EE",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: "dashed",
+  },
+  locDetectText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  locDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  locDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.borderLight,
+  },
+  locDividerText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textLight,
+  },
+  locFormGroup: {
+    gap: 4,
+  },
+  locFormLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+  },
+  locFormInput: {
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    height: 44,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text,
+  },
+  locSaveBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  locSaveBtnText: {
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
   },

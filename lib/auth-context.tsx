@@ -11,6 +11,14 @@ interface UserData {
   role: string;
   phone?: string;
   profileImage?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  addressLine1?: string;
+  addressLine2?: string;
 }
 
 interface AuthContextValue {
@@ -21,6 +29,7 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: { name: string; phone: string }) => Promise<void>;
+  updateLocation: (data: Partial<Pick<UserData, "city" | "state" | "pincode" | "country" | "latitude" | "longitude" | "addressLine1" | "addressLine2">>) => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 }
 
@@ -247,8 +256,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updated);
   }
 
+  async function updateLocation(data: Partial<Pick<UserData, "city" | "state" | "pincode" | "country" | "latitude" | "longitude" | "addressLine1" | "addressLine2">>) {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Not authenticated");
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/auth/location", baseUrl);
+    const res = await fetch(url.toString(), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (!newToken) throw new Error("Session expired. Please log in again.");
+      const retryRes = await fetch(url.toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!retryRes.ok) {
+        const d = await retryRes.json();
+        throw new Error(d.message || "Update failed");
+      }
+      const updated = await retryRes.json();
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+      return;
+    }
+
+    if (!res.ok) {
+      const d = await res.json();
+      throw new Error(d.message || "Update failed");
+    }
+
+    const updated = await res.json();
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+    setUser(updated);
+  }
+
   const value = useMemo(
-    () => ({ user, token, isLoading, login, register, logout, updateProfile, getAccessToken }),
+    () => ({ user, token, isLoading, login, register, logout, updateProfile, updateLocation, getAccessToken }),
     [user, token, isLoading, getAccessToken]
   );
 
