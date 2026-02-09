@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
-import fetch from "node-fetch";          // 👈 ADD HERE
+// import fetch from "node-fetch";          // 👈 ADD HERE
+const fetch = globalThis.fetch;
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
