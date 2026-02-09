@@ -24,16 +24,15 @@ import * as Haptics from "expo-haptics";
 const { width } = Dimensions.get("window");
 
 function RecommendedProductCard({ item }: { item: any }) {
-  const price = item.discountPrice || item.price;
-  const images = item.images || [];
+  const price = item.price;
   return (
     <Pressable
       style={recStyles.card}
-      onPress={() => router.push(`/product/${item.id}`)}
+      onPress={() => router.push(`/product/${item._id}`)}
     >
-      {images.length > 0 ? (
+      {item.image ? (
         <Image
-          source={{ uri: getImageUrl(images[0]) }}
+          source={{ uri: getImageUrl(item.image) }}
           style={recStyles.image}
           contentFit="cover"
         />
@@ -47,9 +46,9 @@ function RecommendedProductCard({ item }: { item: any }) {
         <Text style={recStyles.price}>${price.toFixed(2)}</Text>
         <Pressable
           style={recStyles.viewBtn}
-          onPress={() => router.push(`/product/${item.id}`)}
+          onPress={() => router.push(`/product/${item._id}`)}
         >
-          <Text style={recStyles.viewText}>View</Text>
+          <Text style={recStyles.viewText}>View Product</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -69,7 +68,7 @@ export default function ProductDetailScreen() {
 
   const recommendedQuery = useQuery({
     queryKey: ["recommended", id],
-    queryFn: () => apiFetch(`/api/products/${id}/recommended`),
+    queryFn: () => apiFetch(`/api/products/recommended/${id}`),
     enabled: !!id,
   });
 
@@ -211,20 +210,25 @@ export default function ProductDetailScreen() {
           ) : null}
         </View>
 
-        {recommended.length > 0 && (
+        {recommendedQuery.isLoading ? (
+          <View style={styles.recommendedSection}>
+            <Text style={styles.recommendedTitle}>Recommended Products</Text>
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 12 }} />
+          </View>
+        ) : recommended.length > 0 ? (
           <View style={styles.recommendedSection}>
             <Text style={styles.recommendedTitle}>Recommended Products</Text>
             <FlatList
               data={recommended}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item._id}
               contentContainerStyle={styles.recommendedList}
               renderItem={({ item }) => <RecommendedProductCard item={item} />}
               scrollEnabled={recommended.length > 0}
             />
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
       {product.stock > 0 && (
@@ -309,11 +313,12 @@ const recStyles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
     borderRadius: 8,
     paddingVertical: 6,
+    paddingHorizontal: 8,
     alignItems: "center",
     marginTop: 4,
   },
   viewText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
   },
