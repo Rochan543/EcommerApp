@@ -10,6 +10,8 @@ import {
   authMiddleware,
   adminMiddleware,
   generateToken,
+  generateRefreshToken,
+  verifyRefreshToken,
 } from "./middleware";
 import {
   insertUserSchema,
@@ -67,9 +69,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.createUser(parsed.data);
-      const token = generateToken({ id: user.id, role: user.role, email: user.email });
+      const tokenPayload = { id: user.id, role: user.role, email: user.email };
+      const token = generateToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload);
       return res.status(201).json({
         token,
+        refreshToken,
         user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
       });
     } catch (err: any) {
@@ -94,9 +99,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      const token = generateToken({ id: user.id, role: user.role, email: user.email });
+      const tokenPayload = { id: user.id, role: user.role, email: user.email };
+      const token = generateToken(tokenPayload);
+      const refreshToken = generateRefreshToken(tokenPayload);
       return res.json({
         token,
+        refreshToken,
         user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
       });
     } catch (err: any) {
@@ -117,6 +125,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(401).json({ message: "No refresh token provided" });
+      }
+
+      const decoded = verifyRefreshToken(refreshToken);
+      if (!decoded) {
+        return res.status(401).json({ message: "Invalid or expired refresh token" });
+      }
+
+      const user = await storage.getUserById(decoded.id);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const tokenPayload = { id: user.id, role: user.role, email: user.email };
+      const newAccessToken = generateToken(tokenPayload);
+      const newRefreshToken = generateRefreshToken(tokenPayload);
+
+      return res.json({
+        token: newAccessToken,
+        refreshToken: newRefreshToken,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || "Server error" });
     }
   });
 

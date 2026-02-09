@@ -2,13 +2,26 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "fallback-secret-key";
+const REFRESH_SECRET = (process.env.SESSION_SECRET || "fallback-secret-key") + "_refresh";
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string; email: string };
 }
 
 export function generateToken(payload: { id: string; role: string; email: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+}
+
+export function generateRefreshToken(payload: { id: string; role: string; email: string }): string {
+  return jwt.sign(payload, REFRESH_SECRET, { expiresIn: "30d" });
+}
+
+export function verifyRefreshToken(token: string): { id: string; role: string; email: string } | null {
+  try {
+    return jwt.verify(token, REFRESH_SECRET) as { id: string; role: string; email: string };
+  } catch {
+    return null;
+  }
 }
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
@@ -23,7 +36,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ message: "Invalid token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
 

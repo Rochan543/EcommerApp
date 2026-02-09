@@ -1,0 +1,82 @@
+You are debugging and hardening an existing eCommerce application.
+
+STRICT REQUIREMENTS:
+
+1. FIX LOGIN DISAPPEARING AFTER REFRESH
+-------------------------------------
+- User must remain logged in after browser refresh.
+- Implement JWT Access Token + Refresh Token flow.
+- Refresh token stored in httpOnly cookie.
+- On app load:
+    Call /api/auth/refresh
+    If valid → restore user session.
+    If invalid → logout user.
+
+- Add Axios interceptor:
+    If API returns 401 → call refresh endpoint → retry request.
+
+- Never rely only on React state for authentication.
+- Persist auth using refresh mechanism.
+
+2. FIX BLANK PAGE AFTER REFRESH
+-------------------------------
+- Configure React Router correctly.
+- Use BrowserRouter.
+- Create ProtectedRoute component.
+- Create AdminRoute component.
+- On refresh:
+    Show loading spinner.
+    Restore session.
+    Then render route.
+
+- No route must crash on reload.
+
+3. HIDE ADMIN PANEL FROM USERS
+------------------------------
+- Remove any admin link from user UI.
+- Admin panel must NOT appear in:
+    - Profile screen
+    - Menu
+    - Sidebar
+    - Navbar
+
+- Admin panel accessible ONLY by:
+    /admin-login
+
+- If non-admin opens admin route:
+    Redirect to user login.
+
+4. FIX CLICK FAILURES AFTER REFRESH
+-----------------------------------
+- Never store critical data only in component state.
+- Fetch required data again after reload.
+- Use global state (Context or Redux).
+- Ensure all buttons still work after refresh.
+
+5. SESSION RESTORE FLOW
+----------------------
+On App Start:
+- Show loader.
+- Call refresh token API.
+- If success:
+    Set user in global state.
+- Else:
+    Clear auth.
+    Redirect to login.
+
+6. SECURITY
+-----------
+- bcrypt password hashing.
+- JWT verification middleware.
+- Role-based authorization.
+- Environment variables.
+
+FINAL RESULT:
+-------------
+- Login never disappears.
+- Refresh never breaks app.
+- Admin UI fully hidden.
+- Every click works even after reload.
+
+Apply these fixes and update the existing code accordingly.
+Return only the modified files with full working code.
