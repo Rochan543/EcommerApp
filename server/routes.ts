@@ -699,6 +699,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.get(
+    "/api/admin/orders-tracker",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const { filter } = req.query;
+        let allOrders = await storage.getAllOrders();
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfYesterday = new Date(startOfToday);
+        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+        const thirtyDaysAgo = new Date(startOfToday);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        if (filter === "today") {
+          allOrders = allOrders.filter((o) => o.createdAt && new Date(o.createdAt) >= startOfToday);
+        } else if (filter === "yesterday") {
+          allOrders = allOrders.filter(
+            (o) => o.createdAt && new Date(o.createdAt) >= startOfYesterday && new Date(o.createdAt) < startOfToday
+          );
+        } else if (filter === "last30") {
+          allOrders = allOrders.filter((o) => o.createdAt && new Date(o.createdAt) >= thirtyDaysAgo);
+        }
+
+        const enriched = await Promise.all(
+          allOrders.map(async (o) => {
+            const user = await storage.getUserById(o.userId);
+            const productNames = (o.items || []).map((i: any) => i.title).join(", ");
+            return {
+              id: o.id,
+              userName: user?.name || "Unknown",
+              userPhone: user?.phone || "-",
+              productNames,
+              paymentType: o.paymentStatus === "paid" ? "Paid" : "COD",
+              totalAmount: o.totalAmount,
+              deliveryAddress: o.shippingAddress
+                ? `${o.shippingAddress.addressLine1}, ${o.shippingAddress.city}, ${o.shippingAddress.state} ${o.shippingAddress.pincode}`
+                : "-",
+              status: o.status,
+              createdAt: o.createdAt,
+            };
+          })
+        );
+        return res.json(enriched);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
   // --- Shipping Profile ---
   app.get("/api/auth/shipping", authMiddleware as any, async (req: any, res) => {
     try {
