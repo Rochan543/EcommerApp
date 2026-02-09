@@ -9,26 +9,68 @@ import {
   Alert,
   Platform,
   Dimensions,
+  FlatList,
 } from "react-native";
 import { Image } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
+import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
 
 const { width } = Dimensions.get("window");
 
+function RecommendedProductCard({ item }: { item: any }) {
+  const price = item.discountPrice || item.price;
+  const images = item.images || [];
+  return (
+    <Pressable
+      style={recStyles.card}
+      onPress={() => router.push(`/product/${item.id}`)}
+    >
+      {images.length > 0 ? (
+        <Image
+          source={{ uri: getImageUrl(images[0]) }}
+          style={recStyles.image}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={[recStyles.image, recStyles.placeholder]}>
+          <Ionicons name="image-outline" size={28} color={Colors.textLight} />
+        </View>
+      )}
+      <View style={recStyles.info}>
+        <Text style={recStyles.name} numberOfLines={2}>{item.title}</Text>
+        <Text style={recStyles.price}>${price.toFixed(2)}</Text>
+        <Pressable
+          style={recStyles.viewBtn}
+          onPress={() => router.push(`/product/${item.id}`)}
+        >
+          <Text style={recStyles.viewText}>View</Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams();
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState(0);
+  const { user } = useAuth();
 
   const query = useQuery({
     queryKey: ["product", id],
     queryFn: () => apiFetch(`/api/products/${id}`),
+  });
+
+  const recommendedQuery = useQuery({
+    queryKey: ["recommended", id],
+    queryFn: () => apiFetch(`/api/products/${id}/recommended`),
+    enabled: !!id,
   });
 
   const addToCartMutation = useMutation({
@@ -46,6 +88,26 @@ export default function ProductDetailScreen() {
       Alert.alert("Error", err.message);
     },
   });
+
+  const handleBuyNow = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const product = query.data;
+    if (!product) return;
+    const price = product.discountPrice || product.price;
+    router.push({
+      pathname: "/checkout",
+      params: {
+        buyNow: "true",
+        productId: product.id,
+        productTitle: product.title,
+        productPrice: price.toString(),
+        quantity: quantity.toString(),
+      },
+    });
+  };
 
   if (query.isLoading) {
     return (
@@ -67,6 +129,7 @@ export default function ProductDetailScreen() {
   const images = product.images || [];
   const price = product.discountPrice || product.price;
   const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+  const recommended = recommendedQuery.data || [];
 
   return (
     <View style={styles.container}>
@@ -147,6 +210,21 @@ export default function ProductDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {recommended.length > 0 && (
+          <View style={styles.recommendedSection}>
+            <Text style={styles.recommendedTitle}>Recommended Products</Text>
+            <FlatList
+              data={recommended}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.recommendedList}
+              renderItem={({ item }) => <RecommendedProductCard item={item} />}
+              scrollEnabled={recommended.length > 0}
+            />
+          </View>
+        )}
       </ScrollView>
 
       {product.stock > 0 && (
@@ -180,11 +258,66 @@ export default function ProductDetailScreen() {
               </>
             )}
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.buyNowBtn, pressed && { opacity: 0.9 }]}
+            onPress={handleBuyNow}
+          >
+            <MaterialCommunityIcons name="lightning-bolt" size={20} color={Colors.white} />
+            <Text style={styles.buyNowText}>Buy Now</Text>
+          </Pressable>
         </View>
       )}
     </View>
   );
 }
+
+const recStyles = StyleSheet.create({
+  card: {
+    width: 150,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: "hidden",
+  },
+  image: {
+    width: 150,
+    height: 120,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  placeholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  info: {
+    padding: 10,
+    gap: 4,
+  },
+  name: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.text,
+    lineHeight: 18,
+  },
+  price: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: Colors.primary,
+  },
+  viewBtn: {
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  viewText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -203,7 +336,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 130,
   },
   image: {
     width,
@@ -291,6 +424,20 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 22,
   },
+  recommendedSection: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  recommendedTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+    marginBottom: 14,
+  },
+  recommendedList: {
+    paddingRight: 20,
+  },
   footer: {
     position: "absolute",
     bottom: 0,
@@ -300,9 +447,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    padding: 16,
-    paddingBottom: Platform.OS === "web" ? 34 : 32,
-    gap: 14,
+    padding: 12,
+    paddingBottom: Platform.OS === "web" ? 34 : 28,
+    gap: 8,
     alignItems: "center",
   },
   qtySelector: {
@@ -310,22 +457,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.surfaceAlt,
     borderRadius: 10,
-    gap: 12,
-    paddingHorizontal: 4,
-    height: 48,
+    gap: 8,
+    paddingHorizontal: 2,
+    height: 44,
   },
   qtyBtn: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
   qtyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.text,
-    minWidth: 20,
+    minWidth: 16,
     textAlign: "center",
   },
   addBtn: {
@@ -333,13 +480,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: Colors.primary,
     borderRadius: 12,
-    height: 48,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   addText: {
-    fontSize: 16,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  buyNowBtn: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#E67E22",
+    borderRadius: 12,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  buyNowText: {
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
   },
