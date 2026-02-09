@@ -1,24 +1,28 @@
-import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import Constants from "expo-constants";
 
+/**
+ * Get backend API base URL
+ */
 export function getApiUrl(): string {
-  let host =
-    Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL ||
+  return (
     process.env.EXPO_PUBLIC_API_BASE_URL ||
-    "https://ecommerapp.onrender.com";
-
-  let url = new URL(host);
-  return url.href;
+    "https://ecommerapp.onrender.com"
+  );
 }
 
-
+/**
+ * In-memory access token
+ */
 let memoryToken: string | null = null;
 
 export function setQueryToken(t: string | null) {
   memoryToken = t;
 }
 
+/**
+ * Refresh token handler
+ */
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -27,8 +31,7 @@ async function refreshAccessToken(): Promise<string | null> {
   refreshPromise = (async () => {
     try {
       const baseUrl = getApiUrl();
-      const url = new URL("/api/auth/refresh", baseUrl);
-      const res = await fetch(url.toString(), {
+      const res = await fetch(`${baseUrl}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -53,6 +56,9 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+/**
+ * Throw readable error
+ */
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -60,19 +66,22 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/**
+ * Main API Request helper
+ */
 export async function apiRequest(
   method: string,
   route: string,
-  data?: unknown | undefined,
+  data?: unknown
 ): Promise<Response> {
   const baseUrl = getApiUrl();
-  const url = new URL(route, baseUrl);
+  const url = `${baseUrl}${route}`;
 
   const headers: Record<string, string> = {};
   if (data) headers["Content-Type"] = "application/json";
   if (memoryToken) headers["Authorization"] = `Bearer ${memoryToken}`;
 
-  const res = await fetch(url.toString(), {
+  const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -86,7 +95,7 @@ export async function apiRequest(
       if (data) retryHeaders["Content-Type"] = "application/json";
       retryHeaders["Authorization"] = `Bearer ${newToken}`;
 
-      const retryRes = await fetch(url.toString(), {
+      const retryRes = await fetch(url, {
         method,
         headers: retryHeaders,
         body: data ? JSON.stringify(data) : undefined,
@@ -102,29 +111,36 @@ export async function apiRequest(
   return res;
 }
 
+/**
+ * React Query fetcher
+ */
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+  ({ on401 }) =>
   async ({ queryKey }) => {
     const baseUrl = getApiUrl();
-    const url = new URL(queryKey.join("/") as string, baseUrl);
+    const url = `${baseUrl}/${queryKey.join("/")}`;
 
     const headers: Record<string, string> = {};
     if (memoryToken) headers["Authorization"] = `Bearer ${memoryToken}`;
 
-    const res = await fetch(url.toString(), { headers, credentials: "include" });
+    const res = await fetch(url, {
+      headers,
+      credentials: "include",
+    });
 
     if (res.status === 401) {
       const newToken = await refreshAccessToken();
       if (newToken) {
-        const retryRes = await fetch(url.toString(), {
+        const retryRes = await fetch(url, {
           headers: { Authorization: `Bearer ${newToken}` },
           credentials: "include",
         });
 
-        if (unauthorizedBehavior === "returnNull" && retryRes.status === 401) {
+        if (on401 === "returnNull" && retryRes.status === 401) {
           return null;
         }
 
@@ -133,7 +149,7 @@ export const getQueryFn: <T>(options: {
       }
     }
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (on401 === "returnNull" && res.status === 401) {
       return null;
     }
 
@@ -141,6 +157,9 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+/**
+ * Query Client
+ */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
