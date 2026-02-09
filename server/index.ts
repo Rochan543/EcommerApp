@@ -226,7 +226,46 @@ function setupErrorHandler(app: express.Application) {
   });
 }
 
+function validateEnv() {
+  const required: { name: string; source: string }[] = [
+    { name: "DATABASE_URL", source: "Replit built-in database" },
+    { name: "SESSION_SECRET", source: "Replit Secrets tab" },
+  ];
+
+  const optional: { name: string; feature: string }[] = [
+    { name: "RAZORPAY_KEY_ID", feature: "Razorpay payment gateway" },
+    { name: "RAZORPAY_KEY_SECRET", feature: "Razorpay payment gateway" },
+    { name: "GEMINI_API_KEY", feature: "AI chatbot" },
+  ];
+
+  const missing: string[] = [];
+  for (const v of required) {
+    if (!process.env[v.name]) {
+      missing.push(`${v.name} (set via ${v.source})`);
+    }
+  }
+
+  if (missing.length > 0) {
+    console.error("FATAL: Missing required environment variables:");
+    missing.forEach((m) => console.error(`  - ${m}`));
+    process.exit(1);
+  }
+
+  const warnings: string[] = [];
+  for (const v of optional) {
+    if (!process.env[v.name]) {
+      warnings.push(`${v.name} — ${v.feature} will be disabled`);
+    }
+  }
+
+  if (warnings.length > 0) {
+    console.warn("Optional environment variables not set:");
+    warnings.forEach((w) => console.warn(`  - ${w}`));
+  }
+}
+
 (async () => {
+  validateEnv();
   setupCors(app);
   app.use(cookieParser());
   setupBodyParsing(app);
