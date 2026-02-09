@@ -22,6 +22,7 @@ import {
   insertProductSchema,
   insertOrderSchema,
   insertBannerSchema,
+  insertTicketSchema,
 } from "../shared/schema";
 
 function getRazorpayInstance() {
@@ -671,6 +672,259 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const stats = await storage.getDashboardStats();
         return res.json(stats);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  // --- Shipping Profile ---
+  app.get("/api/auth/shipping", authMiddleware as any, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({
+        fullName: user.fullName || "",
+        phone: user.phone || "",
+        addressLine1: user.addressLine1 || "",
+        addressLine2: user.addressLine2 || "",
+        city: user.city || "",
+        state: user.state || "",
+        pincode: user.pincode || "",
+        country: user.country || "India",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/auth/shipping", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { fullName, phone, addressLine1, addressLine2, city, state, pincode, country } = req.body;
+      const user = await storage.updateUser(req.user.id, {
+        fullName, phone, addressLine1, addressLine2, city, state, pincode, country,
+      });
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({
+        fullName: user.fullName || "",
+        phone: user.phone || "",
+        addressLine1: user.addressLine1 || "",
+        addressLine2: user.addressLine2 || "",
+        city: user.city || "",
+        state: user.state || "",
+        pincode: user.pincode || "",
+        country: user.country || "India",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- Forgot Password (OTP) ---
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email is required" });
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ message: "No account found with this email" });
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await storage.setOtp(user.id, otp, expiresAt);
+
+      console.log(`[OTP] Password reset OTP for ${email}: ${otp}`);
+
+      return res.json({ message: "OTP sent to your email", userId: user.id });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/verify-otp", async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (!user.otpCode || !user.otpExpiresAt) {
+        return res.status(400).json({ message: "No OTP requested" });
+      }
+
+      if (new Date() > new Date(user.otpExpiresAt)) {
+        await storage.clearOtp(user.id);
+        return res.status(400).json({ message: "OTP has expired" });
+      }
+
+      if (user.otpCode !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      await storage.clearOtp(user.id);
+      return res.json({ message: "OTP verified", verified: true, userId: user.id });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) return res.status(400).json({ message: "Email and new password are required" });
+      if (newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(user.id, hashedPassword);
+
+      return res.json({ message: "Password reset successfully" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- Support Tickets (Customer) ---
+  app.get("/api/tickets", authMiddleware as any, async (req: any, res) => {
+    try {
+      const tickets = await storage.getTicketsByUser(req.user.id);
+      return res.json(tickets);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/tickets", authMiddleware as any, async (req: any, res) => {
+    try {
+      const parsed = insertTicketSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+      }
+      const ticket = await storage.createTicket({
+        userId: req.user.id,
+        ...parsed.data,
+      });
+      return res.status(201).json(ticket);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // --- AI Chatbot ---
+  app.post("/api/chatbot", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { message } = req.body;
+      if (!message) return res.status(400).json({ message: "Message is required" });
+
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!geminiKey) {
+        return res.json({
+          reply: "I can help you with orders, products, returns, and shipping. For detailed support, please create a support ticket from the help section.",
+        });
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `You are a helpful customer support chatbot for ShopEase, an e-commerce platform. Keep responses concise (2-3 sentences max). Help with: order tracking, returns, shipping, product questions, account issues. If the issue requires human support, suggest creating a support ticket. User message: ${message}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        return res.json({
+          reply: "I can help you with orders, products, returns, and shipping. For detailed support, please create a support ticket.",
+        });
+      }
+
+      const data = (await response.json()) as any;
+      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "I'm here to help! Please create a support ticket for detailed assistance.";
+      return res.json({ reply });
+    } catch (err: any) {
+      return res.json({
+        reply: "I can help you with orders, products, returns, and shipping. For detailed support, please create a support ticket.",
+      });
+    }
+  });
+
+  // --- Admin Tickets ---
+  app.get(
+    "/api/admin/tickets",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const tickets = await storage.getAllTickets();
+        const enriched = await Promise.all(
+          tickets.map(async (t) => {
+            const user = await storage.getUserById(t.userId);
+            return { ...t, userName: user?.name || "Unknown", userEmail: user?.email || "" };
+          })
+        );
+        return res.json(enriched);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/tickets/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const { status, adminReply } = req.body;
+        const ticket = await storage.updateTicket(req.params.id, { status, adminReply });
+        if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+        return res.json(ticket);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  // --- Order Tracking (Admin update) ---
+  app.put(
+    "/api/admin/orders/:id/tracking",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const { trackingSteps } = req.body;
+        if (!trackingSteps) return res.status(400).json({ message: "Tracking steps required" });
+
+        const order = await storage.updateOrderTracking(req.params.id, trackingSteps);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        const lastCompleted = [...trackingSteps].reverse().find((s: any) => s.completed);
+        let newStatus = "pending";
+        if (lastCompleted) {
+          const stepMap: Record<string, string> = {
+            "Ordered": "confirmed",
+            "Packed": "processing",
+            "Shipped": "shipped",
+            "Out for Delivery": "shipped",
+            "Delivered": "delivered",
+          };
+          newStatus = stepMap[lastCompleted.step] || "pending";
+        }
+        await storage.updateOrderStatus(req.params.id, newStatus);
+
+        return res.json(order);
       } catch (err: any) {
         return res.status(500).json({ message: err.message });
       }
