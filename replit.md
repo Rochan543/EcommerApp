@@ -1,9 +1,19 @@
 # ShopEase - E-Commerce Mobile App
 
 ## Overview
-Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, and promotional banners.
+Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products.
 
 ## Recent Changes
+- 2026-02-09: Buy Now, Razorpay payments, and recommended products
+  - Buy Now button on product detail page (skips cart, goes directly to checkout)
+  - Razorpay payment gateway integration (GPay, PhonePe, UPI, debit/credit cards)
+  - Backend APIs: /api/payment/create-order, /api/payment/verify (HMAC SHA256 signature validation)
+  - Cross-platform payment: WebView on native mobile, Razorpay checkout.js on web
+  - Recommended products section on product detail page (up to 6 same-category items)
+  - Checkout page with shipping address form and multiple payment method options
+  - Database schema extended: razorpayOrderId, razorpayPaymentId, shippingAddress on orders
+  - Login/register now properly navigate to home after success
+  - Environment variables needed: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
 - 2026-02-09: Auth hardening and security improvements
   - JWT access token (15min) + refresh token (30d) flow
   - /api/auth/refresh endpoint for session restoration
@@ -51,7 +61,7 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - users (id, name, email, phone, password, role)
 - categories (id, name, image, is_active)
 - products (id, title, description, price, discount_price, stock, category_id, images, is_active)
-- orders (id, user_id, items, total_amount, status, payment_method, payment_status)
+- orders (id, user_id, items, total_amount, status, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, shipping_address)
 - cart_items (id, user_id, product_id, quantity)
 - banners (id, title, image, link, is_active)
 
