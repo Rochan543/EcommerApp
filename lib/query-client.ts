@@ -3,16 +3,15 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import Constants from "expo-constants";
 
 export function getApiUrl(): string {
-  let host = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL;
-
-  if (!host) {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL is not set");
-  }
+  let host =
+    Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL ||
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
+    "https://ecommerapp.onrender.com";
 
   let url = new URL(host);
-
   return url.href;
 }
+
 
 let memoryToken: string | null = null;
 
