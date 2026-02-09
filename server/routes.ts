@@ -391,10 +391,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Product not found" });
       }
 
+      const reviewUser = await storage.getUserById(req.user.id);
+      const userName = reviewUser?.name || "Anonymous";
+
       const review = await storage.createReview({
         productId: req.params.id,
         userId: req.user.id,
-        userName: req.user.name,
+        userName,
         rating: parsed.data.rating,
         comment: parsed.data.comment || "",
       });

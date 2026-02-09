@@ -4,6 +4,15 @@
 Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products. Zero browser storage policy: all auth uses HTTP-only cookies, no localStorage/sessionStorage/AsyncStorage.
 
 ## Recent Changes
+- 2026-02-09: Product reviews & ratings system
+  - Reviews table: one review per user per product, rating 1-5, comment, userName
+  - API: GET /api/products/:id/reviews (public), POST /api/products/:id/review (auth required)
+  - Admin: GET /api/admin/reviews, DELETE /api/admin/reviews/:id
+  - Duplicate review prevention (400 if user already reviewed)
+  - Product detail page: "Ratings & Reviews" section with star rating display, average rating
+  - Review form with interactive star rating input and comment text box
+  - Review cards with avatar, name, time ago, stars, comment
+  - Admin "More" tab: Reviews management with delete capability
 - 2026-02-09: Environment variable management and deployment readiness
   - Created .env.example documenting all auto-detected environment variables
   - Added startup env validation in server/index.ts (exits on missing required vars, warns on missing optional)
@@ -93,6 +102,7 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - products (id, title, description, price, discount_price, stock, category_id, images, is_active)
 - orders (id, user_id, items, total_amount, status, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, shipping_address)
 - cart_items (id, user_id, product_id, quantity)
+- reviews (id, product_id, user_id, user_name, rating, comment, created_at)
 - banners (id, title, image, link, is_active)
 
 ### Key Design Decisions
