@@ -42,6 +42,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "c66ecc94-8224-4669-bede-1dd75cf902e1"
+      }
+    },
+    "owner": "premrochan"
   }
 }
