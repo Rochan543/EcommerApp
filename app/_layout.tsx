@@ -30,6 +30,10 @@ function RootLayoutNav() {
       <Stack.Screen name="product/[id]" options={{ headerShown: true, headerTitle: "" }} />
       <Stack.Screen name="category/[id]" options={{ headerShown: true, headerTitle: "" }} />
       <Stack.Screen name="checkout" options={{ headerShown: true, headerTitle: "Checkout" }} />
+      <Stack.Screen name="support" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+      <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
+      <Stack.Screen name="admin-tickets" options={{ headerShown: false }} />
     </Stack>
   );
 }
