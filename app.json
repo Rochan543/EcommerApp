@@ -44,13 +44,15 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {
-        "origin": "https://replit.com/"
-      },
-      "eas": {
-        "projectId": "c66ecc94-8224-4669-bede-1dd75cf902e1"
-      }
-    },
+  "EXPO_PUBLIC_DOMAIN": "ecommerapp.onrender.com",
+  "EXPO_PUBLIC_API_BASE_URL": "https://ecommerapp.onrender.com",
+  "router": {
+    "origin": "https://replit.com/"
+  },
+  "eas": {
+    "projectId": "c66ecc94-8224-4669-bede-1dd75cf902e1"
+  }
+},
     "owner": "premrochan"
   }
 }
