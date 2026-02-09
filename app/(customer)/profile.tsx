@@ -60,12 +60,6 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.userName}>{user?.name}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
-        {user?.role === "admin" && (
-          <View style={styles.adminBadge}>
-            <Ionicons name="shield-checkmark" size={14} color={Colors.white} />
-            <Text style={styles.adminText}>Admin</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.section}>
@@ -137,19 +131,6 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {user?.role === "admin" && (
-        <Pressable
-          style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.8 }]}
-          onPress={() => router.push("/(admin)")}
-        >
-          <View style={[styles.menuIcon, { backgroundColor: "#8B5CF6" }]}>
-            <Ionicons name="settings-outline" size={20} color={Colors.white} />
-          </View>
-          <Text style={styles.menuText}>Admin Panel</Text>
-          <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
-        </Pressable>
-      )}
-
       <Pressable
         style={({ pressed }) => [styles.logoutBtn, pressed && { opacity: 0.9 }]}
         onPress={handleLogout}
@@ -196,21 +177,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
     marginTop: 2,
-  },
-  adminBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#8B5CF6",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  adminText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.white,
   },
   section: {
     backgroundColor: Colors.surface,
@@ -285,30 +251,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    color: Colors.text,
   },
   logoutBtn: {
     flexDirection: "row",

@@ -24,6 +24,7 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="admin-login" />
       <Stack.Screen name="(customer)" />
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="product/[id]" options={{ headerShown: true, headerTitle: "" }} />

@@ -1,11 +1,12 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect } from "react";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/lib/auth-context";
 
 function NativeTabLayout() {
   return (
@@ -104,6 +105,26 @@ function ClassicTabLayout() {
 }
 
 export default function AdminLayout() {
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.replace("/admin-login");
+      } else if (user.role !== "admin") {
+        router.replace("/(customer)");
+      }
+    }
+  }, [user, isLoading]);
+
+  if (isLoading || !user || user.role !== "admin") {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+      </View>
+    );
+  }
+
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }
