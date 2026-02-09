@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
   FlatList,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, router } from "expo-router";
@@ -56,10 +57,82 @@ function RecommendedProductCard({ item }: { item: any }) {
   );
 }
 
+function StarRatingInput({ rating, onRate, size = 28 }: { rating: number; onRate: (r: number) => void; size?: number }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 4 }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Pressable key={star} onPress={() => onRate(star)}>
+          <Ionicons
+            name={star <= rating ? "star" : "star-outline"}
+            size={size}
+            color={star <= rating ? "#F59E0B" : Colors.textLight}
+          />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function StarRatingDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Ionicons
+          key={star}
+          name={star <= rating ? "star" : star - 0.5 <= rating ? "star-half" : "star-outline"}
+          size={size}
+          color={star <= rating ? "#F59E0B" : Colors.textLight}
+        />
+      ))}
+    </View>
+  );
+}
+
+function ReviewCard({ review }: { review: any }) {
+  const date = new Date(review.createdAt);
+  const timeAgo = getTimeAgo(date);
+  return (
+    <View style={reviewStyles.card}>
+      <View style={reviewStyles.cardHeader}>
+        <View style={reviewStyles.avatar}>
+          <Text style={reviewStyles.avatarText}>
+            {(review.userName || "U").charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={reviewStyles.reviewerName}>{review.userName}</Text>
+          <Text style={reviewStyles.reviewDate}>{timeAgo}</Text>
+        </View>
+        <StarRatingDisplay rating={review.rating} />
+      </View>
+      {review.comment ? (
+        <Text style={reviewStyles.reviewComment}>{review.comment}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth}mo ago`;
+  return `${Math.floor(diffMonth / 12)}y ago`;
+}
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams();
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState(0);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
   const { user } = useAuth();
 
   const query = useQuery({
@@ -71,6 +144,30 @@ export default function ProductDetailScreen() {
     queryKey: ["recommended", id],
     queryFn: () => apiFetch(`/api/products/recommended/${id}`),
     enabled: !!id,
+  });
+
+  const reviewsQuery = useQuery({
+    queryKey: ["reviews", id],
+    queryFn: () => apiFetch(`/api/products/${id}/reviews`),
+    enabled: !!id,
+  });
+
+  const submitReviewMutation = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/products/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews", id] });
+      setReviewRating(0);
+      setReviewComment("");
+      Alert.alert("Thank you!", "Your review has been submitted");
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (err: any) => {
+      Alert.alert("Error", err.message || "Could not submit review");
+    },
   });
 
   const addToCartMutation = useMutation({
@@ -130,6 +227,11 @@ export default function ProductDetailScreen() {
   const price = product.discountPrice || product.price;
   const hasDiscount = product.discountPrice && product.discountPrice < product.price;
   const recommended = recommendedQuery.data || [];
+  const reviewsList: any[] = reviewsQuery.data || [];
+  const avgRating = reviewsList.length > 0
+    ? reviewsList.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsList.length
+    : 0;
+  const userAlreadyReviewed = user ? reviewsList.some((r: any) => r.userId === user.id) : false;
 
   return (
     <View style={styles.container}>
@@ -230,6 +332,73 @@ export default function ProductDetailScreen() {
             />
           </View>
         ) : null}
+
+        <View style={reviewStyles.section}>
+          <View style={reviewStyles.sectionHeader}>
+            <Text style={reviewStyles.sectionTitle}>Ratings & Reviews</Text>
+            {reviewsList.length > 0 && (
+              <View style={reviewStyles.avgRow}>
+                <StarRatingDisplay rating={Math.round(avgRating)} size={16} />
+                <Text style={reviewStyles.avgText}>
+                  {avgRating.toFixed(1)} ({reviewsList.length})
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {user && !userAlreadyReviewed ? (
+            <View style={reviewStyles.formCard}>
+              <Text style={reviewStyles.formLabel}>Rate this product</Text>
+              <StarRatingInput rating={reviewRating} onRate={setReviewRating} />
+              <TextInput
+                style={reviewStyles.commentInput}
+                placeholder="Write your review (optional)"
+                placeholderTextColor={Colors.textLight}
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <Pressable
+                style={[
+                  reviewStyles.submitBtn,
+                  reviewRating === 0 && { opacity: 0.5 },
+                ]}
+                onPress={() => submitReviewMutation.mutate()}
+                disabled={reviewRating === 0 || submitReviewMutation.isPending}
+              >
+                {submitReviewMutation.isPending ? (
+                  <ActivityIndicator color={Colors.white} size="small" />
+                ) : (
+                  <Text style={reviewStyles.submitText}>Submit Review</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : user && userAlreadyReviewed ? (
+            <View style={reviewStyles.alreadyReviewed}>
+              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+              <Text style={reviewStyles.alreadyText}>You have reviewed this product</Text>
+            </View>
+          ) : (
+            <Pressable style={reviewStyles.loginPrompt} onPress={() => router.push("/login")}>
+              <Text style={reviewStyles.loginText}>Log in to write a review</Text>
+              <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+            </Pressable>
+          )}
+
+          {reviewsQuery.isLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />
+          ) : reviewsList.length > 0 ? (
+            <View style={{ gap: 10, marginTop: 14 }}>
+              {reviewsList.map((review: any) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </View>
+          ) : (
+            <Text style={reviewStyles.noReviews}>No reviews yet. Be the first to review!</Text>
+          )}
+        </View>
       </ScrollView>
 
       {product.stock > 0 && (
@@ -325,6 +494,149 @@ const recStyles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
+  },
+});
+
+const reviewStyles = StyleSheet.create({
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+  },
+  avgRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  avgText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+  },
+  formCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  commentInput: {
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text,
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  submitBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  submitText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  alreadyReviewed: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#ECFDF5",
+    padding: 12,
+    borderRadius: 10,
+  },
+  alreadyText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.success,
+  },
+  loginPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: Colors.surfaceAlt,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  loginText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  noReviews: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+    textAlign: "center",
+    marginTop: 20,
+  },
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  reviewDate: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+    marginTop: 1,
+  },
+  reviewComment: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 10,
   },
 });
 
