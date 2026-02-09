@@ -4,6 +4,13 @@
 Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products. Zero browser storage policy: all auth uses HTTP-only cookies, no localStorage/sessionStorage/AsyncStorage.
 
 ## Recent Changes
+- 2026-02-09: Environment variable management and deployment readiness
+  - Created .env.example documenting all auto-detected environment variables
+  - Added startup env validation in server/index.ts (exits on missing required vars, warns on missing optional)
+  - Required: DATABASE_URL, SESSION_SECRET (Replit-provided/secrets)
+  - Optional: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (payments), GEMINI_API_KEY (AI chatbot)
+  - Non-sensitive vars (PORT, NODE_ENV) set via Replit env system
+  - .env in .gitignore, no hardcoded secrets anywhere
 - 2026-02-09: Production security audit - zero browser storage
   - Eliminated all AsyncStorage, localStorage, sessionStorage usage
   - Auth tokens (access + refresh) stored as HTTP-only secure cookies (sameSite:'none', httpOnly:true, secure:true)
