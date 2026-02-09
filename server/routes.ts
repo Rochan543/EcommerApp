@@ -85,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(201).json({
         token,
         refreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
@@ -115,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         token,
         refreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
@@ -132,6 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        profileImage: user.profileImage || "",
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -162,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         token: newAccessToken,
         refreshToken: newRefreshToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone, profileImage: user.profileImage || "" },
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message || "Server error" });
@@ -180,6 +181,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        profileImage: user.profileImage || "",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/profile-image", authMiddleware as any, upload.single("image"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const imageUrl = `/uploads/${req.file.filename}`;
+      const user = await storage.updateUser(req.user.id, { profileImage: imageUrl });
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        profileImage: user.profileImage || "",
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

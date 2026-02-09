@@ -1,0 +1,107 @@
+You are enhancing and fixing an existing eCommerce application.
+
+Implement ONLY the following changes:
+
+--------------------------------------------------
+1. FORCE UI TO MATCH REFERENCE IMAGE (CREAMY BLINKIT STYLE)
+--------------------------------------------------
+- Apply creamy/off-white background (#FFF9F0).
+- Primary color: soft green (#2DBE60).
+- Rounded cards (16px radius).
+- Soft shadow.
+- Large product images.
+- Clean spacing.
+- Smooth transitions (200–300ms).
+
+Update these pages:
+- Home
+- Product List
+- Product Details
+- Cart
+- Checkout
+- Profile
+- Orders
+
+UI must visibly change.
+
+--------------------------------------------------
+2. FIX PROFILE IMAGE UPLOAD
+--------------------------------------------------
+- Add image picker in Profile page.
+- Upload image to Cloudinary.
+- Save image URL in user model.
+- Display image after refresh.
+
+--------------------------------------------------
+3. ADMIN DASHBOARD ANALYTICS CARDS
+--------------------------------------------------
+Top dashboard must show 4 horizontal cards:
+
+[ Total Users ]   [ Products ]   [ Orders ]   [ Revenue (₹) ]
+
+Backend APIs:
+- Count users
+- Count products
+- Count orders
+- Sum totalAmount of orders
+
+Cards must load dynamically.
+
+--------------------------------------------------
+4. CLEAN ADMIN HEADER
+--------------------------------------------------
+- Remove "Admin Panel" text.
+- Remove unnecessary right-side icons.
+- Keep only Logout button.
+
+--------------------------------------------------
+5. FIX FORGOT PASSWORD + OTP
+--------------------------------------------------
+Flow must work:
+
+Email → Send OTP  
+OTP → Verify  
+New Password → Save  
+
+- OTP stored in DB.
+- Expiry: 10 minutes.
+- Show success & error messages.
+
+--------------------------------------------------
+6. ORDER STATUS REAL-TIME REFLECTION
+--------------------------------------------------
+- Admin updates order status (packed, shipped, delivered).
+- User Orders page must instantly reflect updated status.
+- Fetch orders on page load and refresh.
+
+--------------------------------------------------
+7. USER ORDER DETAILS PAGE
+--------------------------------------------------
+When user clicks an order:
+
+Show:
+- Products list
+- Quantity
+- Price
+- Subtotal
+- Delivery charge
+- Payment method
+- Payment status
+- Grand total
+
+Calculation:
+subtotal = sum(item.price * qty)
+total = subtotal + deliveryCharge
+
+--------------------------------------------------
+FINAL RESULT
+--------------------------------------------------
+- UI matches reference image.
+- Profile image works.
+- Admin dashboard shows analytics.
+- Header cleaned.
+- OTP reset works.
+- Order status syncs.
+- Detailed order view works.
+
+Apply changes and return only modified files.

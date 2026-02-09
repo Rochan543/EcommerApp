@@ -10,6 +10,7 @@ interface UserData {
   email: string;
   role: string;
   phone?: string;
+  profileImage?: string;
 }
 
 interface AuthContextValue {

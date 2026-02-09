@@ -14,9 +14,15 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getImageUrl } from "@/lib/api";
+import { getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ShippingAddress {
   fullName: string;
@@ -29,13 +35,16 @@ interface ShippingAddress {
   country: string;
 }
 
+const USER_KEY = "ecom_auth_user";
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, getAccessToken } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [editingShipping, setEditingShipping] = useState(false);
   const [savingShipping, setSavingShipping] = useState(false);
@@ -64,6 +73,55 @@ export default function ProfileScreen() {
     } catch {
     } finally {
       setLoadingShipping(false);
+    }
+  }
+
+  async function handlePickImage() {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      const file = new File(result.assets[0].uri);
+      formData.append("image", file);
+
+      const token = await getAccessToken();
+      const baseUrl = getApiUrl();
+      const res = await fetch(new URL("/api/auth/profile-image", baseUrl).toString(), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: "Upload failed" }));
+        throw new Error(data.message || "Upload failed");
+      }
+
+      const meUrl = new URL("/api/auth/me", baseUrl).toString();
+      const meRes = await fetch(meUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (meRes.ok) {
+        const freshUser = await meRes.json();
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+        await updateProfile({ name: freshUser.name, phone: freshUser.phone || "" });
+      }
+
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -121,9 +179,26 @@ export default function ProfileScreen() {
       <Text style={styles.title}>Profile</Text>
 
       <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={40} color={Colors.white} />
-        </View>
+        <Pressable onPress={handlePickImage} disabled={uploadingImage} style={styles.avatarWrapper}>
+          {user?.profileImage ? (
+            <Image
+              source={{ uri: getImageUrl(user.profileImage) }}
+              style={styles.avatarImage}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={40} color={Colors.white} />
+            </View>
+          )}
+          <View style={styles.cameraBadge}>
+            {uploadingImage ? (
+              <ActivityIndicator color={Colors.white} size="small" />
+            ) : (
+              <Ionicons name="camera" size={14} color={Colors.white} />
+            )}
+          </View>
+        </Pressable>
         <Text style={styles.userName}>{user?.name}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
       </View>
@@ -341,14 +416,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 28,
   },
+  avatarWrapper: {
+    position: "relative" as const,
+    marginBottom: 12,
+  },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+  },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  cameraBadge: {
+    position: "absolute" as const,
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.background,
   },
   userName: {
     fontSize: 20,

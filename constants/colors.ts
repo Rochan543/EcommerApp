@@ -1,12 +1,12 @@
 const Colors = {
-  primary: "#1B4332",
-  primaryLight: "#2D6A4F",
-  primaryDark: "#081C15",
+  primary: "#2DBE60",
+  primaryLight: "#34D369",
+  primaryDark: "#1E9B4B",
   accent: "#D4A373",
   accentLight: "#E6CCB2",
-  background: "#FEFAE0",
+  background: "#FFF9F0",
   surface: "#FFFFFF",
-  surfaceAlt: "#F5F0E1",
+  surfaceAlt: "#FFF3E6",
   text: "#1A1A2E",
   textSecondary: "#6B7280",
   textLight: "#9CA3AF",
@@ -20,10 +20,10 @@ const Colors = {
 
   light: {
     text: "#1A1A2E",
-    background: "#FEFAE0",
-    tint: "#1B4332",
+    background: "#FFF9F0",
+    tint: "#2DBE60",
     tabIconDefault: "#9CA3AF",
-    tabIconSelected: "#1B4332",
+    tabIconSelected: "#2DBE60",
   },
 };
 

@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   state: text("state").default(""),
   pincode: text("pincode").default(""),
   country: text("country").default("India"),
+  profileImage: text("profile_image").default(""),
   otpCode: text("otp_code"),
   otpExpiresAt: timestamp("otp_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),

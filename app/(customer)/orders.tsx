@@ -31,6 +31,8 @@ export default function OrdersScreen() {
   const query = useQuery({
     queryKey: ["orders"],
     queryFn: () => apiFetch("/api/orders"),
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
   });
 
   const orders = query.data || [];
@@ -68,7 +70,7 @@ export default function OrdersScreen() {
             return (
               <Pressable
                 style={styles.orderCard}
-                onPress={() => router.push(`/order-tracking?id=${item.id}` as any)}
+                onPress={() => router.push(`/order-detail?id=${item.id}` as any)}
               >
                 <View style={styles.orderHeader}>
                   <Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text>
@@ -109,6 +111,19 @@ export default function OrdersScreen() {
                     <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
                   </View>
                 </View>
+
+                {item.status !== "cancelled" && item.status !== "delivered" && (
+                  <Pressable
+                    style={styles.trackBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/order-tracking?id=${item.id}` as any);
+                    }}
+                  >
+                    <Ionicons name="location-outline" size={16} color={Colors.white} />
+                    <Text style={styles.trackBtnText}>Track</Text>
+                  </Pressable>
+                )}
               </Pressable>
             );
           }}
@@ -235,5 +250,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+  },
+  trackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  trackBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
   },
 });
