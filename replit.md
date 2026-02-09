@@ -4,6 +4,18 @@
 Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products.
 
 ## Recent Changes
+- 2026-02-09: Announcements system and automatic location detection
+  - Admin CRUD for announcements (title, message, image, active toggle)
+  - User-facing animated popup with sequential viewing and dot indicators
+  - View tracking via /api/announcements/:id/view endpoint
+  - Automatic location detection: GPS permission flow with expo-location
+  - OpenStreetMap Nominatim reverse geocoding (free, no API key)
+  - Location fields on users: city, state, pincode, country, latitude, longitude, addressLine1, addressLine2
+  - PUT /api/auth/location endpoint for saving location data
+  - LocationContext (lib/location-context.tsx) managing permission state and geocoding
+  - Home page header shows "Deliver to: City, Pincode" with change modal
+  - Manual location entry modal with city/pincode/state/address fields
+  - Permission prompt banner with Allow/Deny buttons
 - 2026-02-09: Buy Now, Razorpay payments, and recommended products
   - Buy Now button on product detail page (skips cart, goes directly to checkout)
   - Razorpay payment gateway integration (GPay, PhonePe, UPI, debit/credit cards)
@@ -46,6 +58,7 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - **app/category/[id].tsx** - Category products
 - **app/checkout.tsx** - Checkout flow
 - **lib/auth-context.tsx** - Auth state management with AsyncStorage
+- **lib/location-context.tsx** - Location detection and management
 - **lib/api.ts** - API helper utilities
 - **lib/query-client.ts** - React Query client setup
 - **constants/colors.ts** - Theme colors
@@ -58,7 +71,8 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - **shared/schema.ts** - Drizzle schema definitions and Zod validators
 
 ### Database (PostgreSQL)
-- users (id, name, email, phone, password, role)
+- users (id, name, email, phone, password, role, city, state, pincode, country, latitude, longitude, addressLine1, addressLine2)
+- announcements (id, title, message, image, is_active, created_at)
 - categories (id, name, image, is_active)
 - products (id, title, description, price, discount_price, stock, category_id, images, is_active)
 - orders (id, user_id, items, total_amount, status, payment_method, payment_status, razorpay_order_id, razorpay_payment_id, shipping_address)
