@@ -1,9 +1,18 @@
 # ShopEase - E-Commerce Mobile App
 
 ## Overview
-Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products.
+Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products. Zero browser storage policy: all auth uses HTTP-only cookies, no localStorage/sessionStorage/AsyncStorage.
 
 ## Recent Changes
+- 2026-02-09: Production security audit - zero browser storage
+  - Eliminated all AsyncStorage, localStorage, sessionStorage usage
+  - Auth tokens (access + refresh) stored as HTTP-only secure cookies (sameSite:'none', httpOnly:true, secure:true)
+  - Server: cookie-parser middleware, auth endpoints set/clear cookies, CORS credentials:true
+  - Auth middleware reads tokens from cookies first, falls back to Authorization header
+  - Client: All fetch requests use credentials:'include' for automatic cookie handling
+  - Token state in memory only (never persisted client-side), refreshed via cookie-based /api/auth/refresh
+  - LocationContext derives permission state from user data (city/pincode) instead of AsyncStorage
+  - POST /api/auth/logout endpoint clears cookies server-side
 - 2026-02-09: Announcements system and automatic location detection
   - Admin CRUD for announcements (title, message, image, active toggle)
   - User-facing animated popup with sequential viewing and dot indicators
@@ -57,7 +66,7 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - **app/product/[id].tsx** - Product detail
 - **app/category/[id].tsx** - Category products
 - **app/checkout.tsx** - Checkout flow
-- **lib/auth-context.tsx** - Auth state management with AsyncStorage
+- **lib/auth-context.tsx** - Auth state management with HTTP-only cookies (zero browser storage)
 - **lib/location-context.tsx** - Location detection and management
 - **lib/api.ts** - API helper utilities
 - **lib/query-client.ts** - React Query client setup
@@ -80,6 +89,10 @@ Full-stack eCommerce system with Expo/React Native mobile app, Express backend, 
 - banners (id, title, image, link, is_active)
 
 ### Key Design Decisions
+- Zero browser storage: No localStorage, sessionStorage, AsyncStorage, or IndexedDB
+- Auth via HTTP-only cookies (access_token 15min, refresh_token 30d)
+- Auth middleware: cookies first, Authorization header fallback (for native mobile)
+- All API requests use credentials:'include' for cookie transport
 - Admin role check: user.role === "admin"
 - ID columns use varchar with gen_random_uuid()
 - Images stored as JSONB array on products
