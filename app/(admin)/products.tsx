@@ -18,6 +18,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
+import { formatINR } from "@/lib/format";
 import { queryClient } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 
@@ -167,7 +168,7 @@ export default function AdminProducts() {
                 )}
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.cardPrice}>${item.price.toFixed(2)}</Text>
+                  <Text style={styles.cardPrice}>{formatINR(item.price)}</Text>
                   <Text style={styles.cardMeta}>Stock: {item.stock} | {item.isActive ? "Active" : "Inactive"}</Text>
                 </View>
                 <View style={styles.cardActions}>

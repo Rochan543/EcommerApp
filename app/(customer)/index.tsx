@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
 const { width } = Dimensions.get("window");
@@ -121,9 +122,11 @@ export default function HomeScreen() {
                 onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id, name: cat.name } })}
               >
                 {cat.image ? (
-                  <Image source={{ uri: getImageUrl(cat.image) }} style={styles.categoryImage} contentFit="cover" />
+                  <View style={styles.categoryImageWrap}>
+                    <Image source={{ uri: getImageUrl(cat.image) }} style={styles.categoryImage} contentFit="cover" />
+                  </View>
                 ) : (
-                  <View style={[styles.categoryImage, styles.categoryPlaceholder]}>
+                  <View style={[styles.categoryImageWrap, styles.categoryPlaceholder]}>
                     <Ionicons name="folder-outline" size={24} color={Colors.primary} />
                   </View>
                 )}
@@ -150,7 +153,7 @@ export default function HomeScreen() {
             {products.slice(0, 6).map((product: any) => (
               <Pressable
                 key={product.id}
-                style={({ pressed }) => [styles.productCard, pressed && { opacity: 0.9 }]}
+                style={({ pressed }) => [styles.productCard, pressed && { transform: [{ scale: 0.97 }] }]}
                 onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.id } })}
               >
                 {(product.images?.length > 0) ? (
@@ -164,19 +167,32 @@ export default function HomeScreen() {
                     <Ionicons name="image-outline" size={32} color={Colors.textLight} />
                   </View>
                 )}
+                {product.discountPrice && product.discountPrice < product.price && (
+                  <View style={styles.discountTag}>
+                    <Text style={styles.discountTagText}>
+                      {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.productInfo}>
                   <Text style={styles.productTitle} numberOfLines={2}>{product.title}</Text>
                   <View style={styles.priceRow}>
                     {product.discountPrice ? (
                       <>
-                        <Text style={styles.discountPrice}>${product.discountPrice.toFixed(2)}</Text>
-                        <Text style={styles.originalPrice}>${product.price.toFixed(2)}</Text>
+                        <Text style={styles.discountPrice}>{formatINR(product.discountPrice)}</Text>
+                        <Text style={styles.originalPrice}>{formatINR(product.price)}</Text>
                       </>
                     ) : (
-                      <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+                      <Text style={styles.productPrice}>{formatINR(product.price)}</Text>
                     )}
                   </View>
                 </View>
+                <Pressable
+                  style={styles.quickAddBtn}
+                  onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.id } })}
+                >
+                  <Ionicons name="add" size={18} color={Colors.white} />
+                </Pressable>
               </Pressable>
             ))}
           </View>
@@ -276,13 +292,20 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     alignItems: "center",
-    width: 72,
+    width: 76,
   },
-  categoryImage: {
+  categoryImageWrap: {
     width: 64,
     height: 64,
-    borderRadius: 20,
-    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 32,
+    backgroundColor: "#E8F5E9",
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: Colors.primaryLight,
+  },
+  categoryImage: {
+    width: "100%",
+    height: "100%",
   },
   categoryPlaceholder: {
     justifyContent: "center",
@@ -304,26 +327,44 @@ const styles = StyleSheet.create({
   productCard: {
     width: cardWidth,
     backgroundColor: Colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   productImage: {
     width: "100%",
-    height: cardWidth,
+    height: cardWidth * 1.05,
     backgroundColor: Colors.surfaceAlt,
   },
   productPlaceholder: {
     justifyContent: "center",
     alignItems: "center",
   },
+  discountTag: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: Colors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  discountTagText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
   productInfo: {
     padding: 10,
-    gap: 6,
+    paddingBottom: 12,
+    gap: 4,
   },
   productTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: Colors.text,
     lineHeight: 18,
@@ -341,13 +382,29 @@ const styles = StyleSheet.create({
   discountPrice: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
-    color: Colors.error,
+    color: Colors.primary,
   },
   originalPrice: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: Colors.textLight,
     textDecorationLine: "line-through",
+  },
+  quickAddBtn: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   emptyState: {
     alignItems: "center",

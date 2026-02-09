@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
 import { getApiUrl } from "@/lib/query-client";
@@ -375,7 +376,7 @@ export default function CheckoutScreen() {
                     {itemQty}x {isBuyNow ? params.productTitle : item.product?.title}
                   </Text>
                   <Text style={styles.itemPrice}>
-                    ${(itemPrice * itemQty).toFixed(2)}
+                    {formatINR(itemPrice * itemQty)}
                   </Text>
                 </View>
               );
@@ -402,7 +403,7 @@ export default function CheckoutScreen() {
             )}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
+              <Text style={styles.totalAmount}>{formatINR(total)}</Text>
             </View>
           </View>
 
@@ -521,7 +522,7 @@ export default function CheckoutScreen() {
             <ActivityIndicator color={Colors.white} />
           ) : (
             <Text style={styles.placeOrderText}>
-              {isOnlinePayment ? `Pay $${total.toFixed(2)}` : `Place Order - $${total.toFixed(2)}`}
+              {isOnlinePayment ? `Pay ${formatINR(total)}` : `Place Order - ${formatINR(total)}`}
             </Text>
           )}
         </Pressable>

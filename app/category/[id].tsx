@@ -13,6 +13,7 @@ import { useLocalSearchParams, router, Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
 const { width } = Dimensions.get("window");
@@ -69,11 +70,11 @@ export default function CategoryProductsScreen() {
                 <View style={styles.priceRow}>
                   {item.discountPrice ? (
                     <>
-                      <Text style={styles.discountPrice}>${item.discountPrice.toFixed(2)}</Text>
-                      <Text style={styles.oldPrice}>${item.price.toFixed(2)}</Text>
+                      <Text style={styles.discountPrice}>{formatINR(item.discountPrice)}</Text>
+                      <Text style={styles.oldPrice}>{formatINR(item.price)}</Text>
                     </>
                   ) : (
-                    <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+                    <Text style={styles.price}>{formatINR(item.price)}</Text>
                   )}
                 </View>
               </View>

@@ -18,6 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
 
@@ -43,7 +44,7 @@ function RecommendedProductCard({ item }: { item: any }) {
       )}
       <View style={recStyles.info}>
         <Text style={recStyles.name} numberOfLines={2}>{item.title}</Text>
-        <Text style={recStyles.price}>${price.toFixed(2)}</Text>
+        <Text style={recStyles.price}>{formatINR(price)}</Text>
         <Pressable
           style={recStyles.viewBtn}
           onPress={() => router.push(`/product/${item._id}`)}
@@ -174,11 +175,11 @@ export default function ProductDetailScreen() {
           <Text style={styles.title}>{product.title}</Text>
 
           <View style={styles.priceRow}>
-            <Text style={[styles.price, hasDiscount && { color: Colors.error }]}>
-              ${price.toFixed(2)}
+            <Text style={[styles.price, hasDiscount && { color: Colors.primary }]}>
+              {formatINR(price)}
             </Text>
             {hasDiscount && (
-              <Text style={styles.oldPrice}>${product.price.toFixed(2)}</Text>
+              <Text style={styles.oldPrice}>{formatINR(product.price)}</Text>
             )}
             {hasDiscount && (
               <View style={styles.discountBadge}>
@@ -232,7 +233,7 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {product.stock > 0 && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Platform.OS === "web" ? 34 : 28 }]}>
           <View style={styles.qtySelector}>
             <Pressable
               style={styles.qtyBtn}
@@ -258,7 +259,7 @@ export default function ProductDetailScreen() {
             ) : (
               <>
                 <Ionicons name="cart" size={20} color={Colors.white} />
-                <Text style={styles.addText}>${(price * quantity).toFixed(2)}</Text>
+                <Text style={styles.addText}>{formatINR(price * quantity)}</Text>
               </>
             )}
           </Pressable>
@@ -279,10 +280,13 @@ const recStyles = StyleSheet.create({
   card: {
     width: 150,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
     overflow: "hidden",
   },
   image: {
@@ -345,7 +349,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width,
-    height: width,
+    height: width * 0.9,
     backgroundColor: Colors.surfaceAlt,
   },
   imagePlaceholder: {
@@ -371,6 +375,15 @@ const styles = StyleSheet.create({
   details: {
     padding: 20,
     gap: 14,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: {
     fontSize: 22,
@@ -451,20 +464,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: Colors.borderLight,
     padding: 12,
-    paddingBottom: Platform.OS === "web" ? 34 : 28,
     gap: 8,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 10,
   },
   qtySelector: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.surfaceAlt,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 8,
     paddingHorizontal: 2,
     height: 44,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   qtyBtn: {
     width: 32,
@@ -484,7 +503,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     height: 44,
     justifyContent: "center",
     alignItems: "center",
@@ -499,7 +518,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     backgroundColor: "#E67E22",
-    borderRadius: 12,
+    borderRadius: 14,
     height: 44,
     justifyContent: "center",
     alignItems: "center",

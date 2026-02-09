@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
 const stepIcons: Record<string, { name: string; family: "ionicons" | "mci" }> = {
@@ -150,12 +151,12 @@ export default function OrderTrackingScreen() {
         {(order.items as any[]).map((item: any, i: number) => (
           <View key={i} style={styles.itemRow}>
             <Text style={styles.itemText} numberOfLines={1}>{item.quantity}x {item.title}</Text>
-            <Text style={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
+            <Text style={styles.itemPrice}>{formatINR(item.price * item.quantity)}</Text>
           </View>
         ))}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>${order.totalAmount.toFixed(2)}</Text>
+          <Text style={styles.totalAmount}>{formatINR(order.totalAmount)}</Text>
         </View>
       </View>
 

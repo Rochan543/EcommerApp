@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 import * as Haptics from "expo-haptics";
 
@@ -96,7 +97,7 @@ export default function CartScreen() {
                 )}
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemTitle} numberOfLines={2}>{product.title}</Text>
-                  <Text style={styles.itemPrice}>${(price * item.quantity).toFixed(2)}</Text>
+                  <Text style={styles.itemPrice}>{formatINR(price * item.quantity)}</Text>
                   <View style={styles.qtyRow}>
                     <Pressable
                       style={styles.qtyBtn}
@@ -129,17 +130,17 @@ export default function CartScreen() {
       )}
 
       {items.length > 0 && (
-        <View style={[styles.footer, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 16 }]}>
-          <View style={styles.totalRow}>
+        <View style={[styles.footer, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 12 }]}>
+          <View style={styles.totalSection}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
+            <Text style={styles.totalAmount}>{formatINR(total)}</Text>
           </View>
           <Pressable
             style={({ pressed }) => [styles.checkoutBtn, pressed && { opacity: 0.9 }]}
             onPress={handleCheckout}
           >
-            <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-            <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+            <Text style={styles.checkoutText}>Checkout</Text>
+            <Ionicons name="arrow-forward" size={18} color={Colors.white} />
           </Pressable>
         </View>
       )}
@@ -170,23 +171,26 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   list: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 200,
-    gap: 12,
+    gap: 10,
   },
   cartItem: {
     flexDirection: "row",
     backgroundColor: Colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 12,
     gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   itemImage: {
     width: 80,
     height: 80,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: Colors.surfaceAlt,
   },
   itemPlaceholder: {
@@ -217,10 +221,12 @@ const styles = StyleSheet.create({
   qtyBtn: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: Colors.surfaceAlt,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   qtyText: {
     fontSize: 15,
@@ -238,37 +244,43 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-  },
-  totalRow: {
+    borderTopColor: Colors.borderLight,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  totalSection: {
+    flex: 1,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: Colors.textSecondary,
   },
   totalAmount: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
     color: Colors.text,
   },
   checkoutBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 14,
+    height: 48,
+    paddingHorizontal: 24,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   checkoutText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
   },

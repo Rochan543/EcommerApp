@@ -1,0 +1,89 @@
+You are enhancing an existing eCommerce application.
+
+Implement ONLY the following fixes and improvements:
+
+--------------------------------------------------
+1. SHOW ADMIN REPLIES IN USER TICKET VIEW
+--------------------------------------------------
+- When admin replies to a ticket:
+    Save reply in database field: adminReply.
+
+- User Panel:
+    On "My Tickets" page:
+        Show:
+            - Ticket subject
+            - User message
+            - Ticket status
+            - Admin reply (if available)
+
+- Ticket details page must auto-refresh or refetch ticket data
+  so user instantly sees admin reply.
+
+--------------------------------------------------
+2. ADD EDIT OPTION FOR USER TICKETS
+--------------------------------------------------
+- In user "My Tickets" list:
+    Add Edit button for tickets with status = "open".
+
+- Editable fields:
+    - Subject
+    - Message
+    - Category
+
+- Backend:
+    PUT /api/tickets/:id
+    Allow only ticket owner to update.
+
+- If ticket status is "in-progress" or "resolved":
+    Editing must be disabled.
+
+--------------------------------------------------
+3. CHANGE BILLING CURRENCY TO INDIAN INR
+--------------------------------------------------
+- Display all prices with:
+    ₹ symbol
+
+- Backend:
+    Store price as number.
+- Frontend:
+    Format using:
+    new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR"
+    })
+
+- Apply to:
+    - Product price
+    - Cart total
+    - Checkout total
+    - Orders
+    - Admin dashboard revenue
+
+--------------------------------------------------
+4. BLINKIT-STYLE UI IMPROVEMENTS
+--------------------------------------------------
+- Use green primary color theme.
+- Rounded cards.
+- Soft shadows.
+- Grid-based product layout.
+- Large product images.
+- Sticky bottom cart bar.
+- Minimal text.
+- Clean spacing.
+
+Pages to update:
+- Home
+- Product list
+- Product details
+- Cart
+- Checkout
+
+--------------------------------------------------
+FINAL RESULT
+--------------------------------------------------
+- Users see admin replies in tickets.
+- Users can edit open tickets.
+- Currency shows in INR.
+- UI resembles Blinkit modern style.
+
+Apply changes and return only modified files.

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
 const statuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
@@ -157,7 +158,7 @@ export default function AdminOrders() {
                 <View style={styles.itemsList}>
                   {(item.items as any[]).map((prod: any, i: number) => (
                     <Text key={i} style={styles.itemText} numberOfLines={1}>
-                      {prod.quantity}x {prod.title} - ${(prod.price * prod.quantity).toFixed(2)}
+                      {prod.quantity}x {prod.title} - {formatINR(prod.price * prod.quantity)}
                     </Text>
                   ))}
                 </View>
@@ -185,7 +186,7 @@ export default function AdminOrders() {
                       <Ionicons name="navigate-outline" size={14} color="#8B5CF6" />
                       <Text style={styles.trackBtnText}>Track</Text>
                     </Pressable>
-                    <Text style={styles.total}>${item.totalAmount.toFixed(2)}</Text>
+                    <Text style={styles.total}>{formatINR(item.totalAmount)}</Text>
                   </View>
                 </View>
               </View>

@@ -52,9 +52,15 @@ export default function SupportScreen() {
   const [ticketCategory, setTicketCategory] = useState("General");
   const [ticketOrderId, setTicketOrderId] = useState("");
 
+  const [editingTicket, setEditingTicket] = useState<any>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editCategory, setEditCategory] = useState("General");
+
   const ticketsQuery = useQuery({
     queryKey: ["tickets"],
     queryFn: () => apiFetch("/api/tickets"),
+    refetchInterval: 10000,
   });
 
   const createTicketMutation = useMutation({
@@ -67,6 +73,17 @@ export default function SupportScreen() {
       setTicketCategory("General");
       setTicketOrderId("");
       Alert.alert("Ticket Created", "We'll get back to you soon!");
+    },
+    onError: (err: any) => Alert.alert("Error", err.message),
+  });
+
+  const editTicketMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiFetch(`/api/tickets/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      setEditingTicket(null);
+      Alert.alert("Updated", "Ticket updated successfully");
     },
     onError: (err: any) => Alert.alert("Error", err.message),
   });
@@ -114,6 +131,28 @@ export default function SupportScreen() {
       message: ticketMessage.trim(),
       category: ticketCategory,
       orderId: ticketOrderId.trim() || undefined,
+    });
+  }
+
+  function openEditTicket(ticket: any) {
+    setEditingTicket(ticket);
+    setEditSubject(ticket.subject);
+    setEditMessage(ticket.message);
+    setEditCategory(ticket.category || "General");
+  }
+
+  function handleEditTicket() {
+    if (!editSubject.trim() || !editMessage.trim()) {
+      Alert.alert("Error", "Subject and message are required");
+      return;
+    }
+    editTicketMutation.mutate({
+      id: editingTicket.id,
+      data: {
+        subject: editSubject.trim(),
+        message: editMessage.trim(),
+        category: editCategory,
+      },
     });
   }
 
@@ -241,13 +280,24 @@ export default function SupportScreen() {
                   <Text style={styles.ticketMessage} numberOfLines={2}>{item.message}</Text>
                   {item.adminReply && (
                     <View style={styles.replySection}>
-                      <Text style={styles.replyLabel}>Admin Reply:</Text>
+                      <View style={styles.replyHeader}>
+                        <Ionicons name="shield-checkmark" size={14} color={Colors.primary} />
+                        <Text style={styles.replyLabel}>Admin Reply</Text>
+                      </View>
                       <Text style={styles.replyText}>{item.adminReply}</Text>
                     </View>
                   )}
-                  <Text style={styles.ticketDate}>
-                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
-                  </Text>
+                  <View style={styles.ticketFooter}>
+                    <Text style={styles.ticketDate}>
+                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
+                    </Text>
+                    {item.status === "open" && (
+                      <Pressable style={styles.editBtn} onPress={() => openEditTicket(item)}>
+                        <Ionicons name="create-outline" size={16} color={Colors.primary} />
+                        <Text style={styles.editBtnText}>Edit</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               )}
             />
@@ -318,6 +368,69 @@ export default function SupportScreen() {
                       <ActivityIndicator color={Colors.white} />
                     ) : (
                       <Text style={styles.submitBtnText}>Submit Ticket</Text>
+                    )}
+                  </Pressable>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={!!editingTicket} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 16 }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Edit Ticket</Text>
+                  <Pressable onPress={() => setEditingTicket(null)}>
+                    <Ionicons name="close" size={24} color={Colors.text} />
+                  </Pressable>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
+                  <Text style={styles.formLabel}>Category</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                    {ticketCategories.map((cat) => (
+                      <Pressable
+                        key={cat}
+                        style={[styles.categoryChip, editCategory === cat && styles.categoryChipActive]}
+                        onPress={() => setEditCategory(cat)}
+                      >
+                        <Text style={[styles.categoryChipText, editCategory === cat && styles.categoryChipTextActive]}>
+                          {cat}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.formLabel}>Subject</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Brief description of your issue"
+                    placeholderTextColor={Colors.textLight}
+                    value={editSubject}
+                    onChangeText={setEditSubject}
+                  />
+
+                  <Text style={styles.formLabel}>Message</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    placeholder="Describe your issue in detail..."
+                    placeholderTextColor={Colors.textLight}
+                    value={editMessage}
+                    onChangeText={setEditMessage}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+
+                  <Pressable
+                    style={[styles.submitBtn, editTicketMutation.isPending && { opacity: 0.7 }]}
+                    onPress={handleEditTicket}
+                    disabled={editTicketMutation.isPending}
+                  >
+                    {editTicketMutation.isPending ? (
+                      <ActivityIndicator color={Colors.white} />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Update Ticket</Text>
                     )}
                   </Pressable>
                 </ScrollView>
@@ -444,8 +557,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   ticketCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   ticketSubject: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text, marginRight: 8 },
@@ -455,13 +571,36 @@ const styles = StyleSheet.create({
   ticketMessage: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   replySection: {
     backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    padding: 10,
-    gap: 4,
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
   },
-  replyLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.primary },
-  replyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.text },
+  replyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  replyLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  replyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.text, lineHeight: 20 },
+  ticketFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   ticketDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  editBtnText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.primary },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   modalOverlay: {

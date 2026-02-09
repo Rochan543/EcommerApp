@@ -812,6 +812,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/tickets/:id", authMiddleware as any, async (req: any, res) => {
+    try {
+      const ticket = await storage.getTicketById(req.params.id);
+      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+      if (ticket.userId !== req.user.id) return res.status(403).json({ message: "Not authorized" });
+      if (ticket.status !== "open") return res.status(400).json({ message: "Only open tickets can be edited" });
+
+      const { subject, message, category } = req.body;
+      const updated = await storage.updateTicket(req.params.id, {
+        ...(subject && { subject }),
+        ...(message && { message }),
+        ...(category && { category }),
+      });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // --- AI Chatbot ---
   app.post("/api/chatbot", authMiddleware as any, async (req: any, res) => {
     try {

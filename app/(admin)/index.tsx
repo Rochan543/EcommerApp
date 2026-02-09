@@ -30,7 +30,7 @@ export default function AdminDashboard() {
     { label: "Total Users", value: stats.totalUsers, icon: "people" as const, color: "#3B82F6", bg: "#EFF6FF" },
     { label: "Products", value: stats.totalProducts, icon: "cube" as const, color: "#8B5CF6", bg: "#F5F3FF" },
     { label: "Orders", value: stats.totalOrders, icon: "receipt" as const, color: "#F59E0B", bg: "#FFFBEB" },
-    { label: "Revenue", value: `$${stats.totalRevenue.toFixed(0)}`, icon: "cash" as const, color: "#16A34A", bg: "#F0FDF4" },
+    { label: "Revenue", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(stats.totalRevenue), icon: "cash" as const, color: "#16A34A", bg: "#F0FDF4" },
   ];
 
   return (

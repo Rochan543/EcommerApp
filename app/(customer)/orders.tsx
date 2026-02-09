@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { apiFetch } from "@/lib/api";
+import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
 
 const statusColors: Record<string, string> = {
@@ -104,7 +105,7 @@ export default function OrdersScreen() {
                     {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
                   </Text>
                   <View style={styles.footerRight}>
-                    <Text style={styles.orderTotal}>${item.totalAmount.toFixed(2)}</Text>
+                    <Text style={styles.orderTotal}>{formatINR(item.totalAmount)}</Text>
                     <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
                   </View>
                 </View>
