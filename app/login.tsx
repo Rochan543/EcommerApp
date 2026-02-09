@@ -70,6 +70,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              testID="login-email"
             />
           </View>
         </View>
@@ -85,6 +86,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              testID="login-password"
             />
             <Pressable onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
@@ -100,6 +102,7 @@ export default function LoginScreen() {
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           onPress={handleLogin}
           disabled={loading}
+          testID="login-submit"
         >
           {loading ? (
             <ActivityIndicator color={Colors.white} />

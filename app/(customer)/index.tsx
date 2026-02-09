@@ -238,9 +238,9 @@ export default function HomeScreen() {
         )}
       </View>
       {showAnnPopup && unviewedAnns.length > 0 && unviewedAnns[currentAnnIndex] && (
-        <Modal visible={showAnnPopup} transparent animationType="none" statusBarTranslucent>
-          <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.annOverlay}>
-            <Animated.View entering={SlideInDown.duration(400).springify()} exiting={SlideOutDown.duration(300)} style={styles.annPopup}>
+        <Modal visible={showAnnPopup} transparent animationType="none" statusBarTranslucent testID="announcement-modal">
+          <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.annOverlay} testID="announcement-overlay">
+            <Animated.View entering={SlideInDown.duration(400).springify()} exiting={SlideOutDown.duration(300)} style={styles.annPopup} testID="announcement-popup">
               <Pressable style={styles.annCloseBtn} onPress={handleCloseAnn}>
                 <Ionicons name="close" size={22} color={Colors.white} />
               </Pressable>
@@ -258,7 +258,7 @@ export default function HomeScreen() {
                 </View>
               )}
               <View style={styles.annPopupContent}>
-                <Text style={styles.annPopupTitle}>{unviewedAnns[currentAnnIndex].title}</Text>
+                <Text style={styles.annPopupTitle} testID="announcement-title">{unviewedAnns[currentAnnIndex].title}</Text>
                 {unviewedAnns[currentAnnIndex].message ? (
                   <ScrollView style={styles.annPopupMsgScroll} showsVerticalScrollIndicator={false}>
                     <Text style={styles.annPopupMessage}>{unviewedAnns[currentAnnIndex].message}</Text>
@@ -271,7 +271,7 @@ export default function HomeScreen() {
                     ))}
                   </View>
                 )}
-                <Pressable style={styles.annGotItBtn} onPress={handleCloseAnn}>
+                <Pressable style={styles.annGotItBtn} onPress={handleCloseAnn} testID="announcement-dismiss">
                   <Text style={styles.annGotItText}>
                     {currentAnnIndex < unviewedAnns.length - 1 ? "Next" : "Got it"}
                   </Text>
