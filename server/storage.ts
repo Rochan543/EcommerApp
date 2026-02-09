@@ -149,12 +149,12 @@ export class Storage {
     return db.select().from(cartItems).where(eq(cartItems.userId, userId));
   }
 
-  async addToCart(userId: string, productId: string, quantity: number): Promise<CartItem> {
+  async addToCart(userId: string, productId: string, quantity: number, size?: string): Promise<CartItem> {
     const existing = await db
       .select()
       .from(cartItems)
       .where(eq(cartItems.userId, userId))
-      .then((items) => items.find((i) => i.productId === productId));
+      .then((items) => items.find((i) => i.productId === productId && (i.size || null) === (size || null)));
 
     if (existing) {
       const [updated] = await db
@@ -167,7 +167,7 @@ export class Storage {
 
     const [item] = await db
       .insert(cartItems)
-      .values({ userId, productId, quantity })
+      .values({ userId, productId, quantity, size: size || null })
       .returning();
     return item;
   }
@@ -191,7 +191,7 @@ export class Storage {
 
   async createOrder(data: {
     userId: string;
-    items: { productId: string; quantity: number; price: number; title: string }[];
+    items: { productId: string; quantity: number; price: number; title: string; size?: string }[];
     totalAmount: number;
     paymentMethod?: string;
     paymentStatus?: string;

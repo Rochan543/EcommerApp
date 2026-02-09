@@ -57,6 +57,7 @@ export const products = pgTable("products", {
   stock: integer("stock").notNull().default(0),
   categoryId: varchar("category_id").references(() => categories.id),
   images: jsonb("images").$type<string[]>().default([]),
+  sizes: jsonb("sizes").$type<{ label: string; stock: number }[]>().default([]),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -69,7 +70,7 @@ export const orders = pgTable("orders", {
     .notNull()
     .references(() => users.id),
   items: jsonb("items")
-    .$type<{ productId: string; quantity: number; price: number; title: string }[]>()
+    .$type<{ productId: string; quantity: number; price: number; title: string; size?: string }[]>()
     .notNull(),
   totalAmount: doublePrecision("total_amount").notNull(),
   status: text("status").notNull().default("pending"),
@@ -111,6 +112,7 @@ export const cartItems = pgTable("cart_items", {
     .notNull()
     .references(() => products.id),
   quantity: integer("quantity").notNull().default(1),
+  size: text("size"),
 });
 
 export const banners = pgTable("banners", {

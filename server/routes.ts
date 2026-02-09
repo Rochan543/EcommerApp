@@ -312,9 +312,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/cart", authMiddleware as any, async (req: any, res) => {
     try {
-      const { productId, quantity } = req.body;
+      const { productId, quantity, size } = req.body;
       if (!productId) return res.status(400).json({ message: "Product ID required" });
-      const item = await storage.addToCart(req.user.id, productId, quantity || 1);
+      const product = await storage.getProductById(productId);
+      if (product && product.sizes && (product.sizes as any[]).length > 0 && !size) {
+        return res.status(400).json({ message: "Please select a size" });
+      }
+      const item = await storage.addToCart(req.user.id, productId, quantity || 1, size);
       return res.status(201).json(item);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
