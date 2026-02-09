@@ -1,0 +1,207 @@
+You are a senior full-stack software architect and engineer.
+
+Build a COMPLETE production-ready eCommerce system consisting of:
+
+1) Mobile App for Customers (React Native / Flutter)
+2) Web Admin Panel (React + Vite)
+3) Backend API (Node.js + Express)
+4) Database (MongoDB)
+
+IMPORTANT RULES:
+- Do NOT use any dummy or static data.
+- All data must come from MongoDB.
+- Every feature must be fully working.
+- Use JWT authentication.
+- Use role-based authorization (admin, user).
+- Admin creates everything; user only consumes.
+- Clean folder structure.
+- Error handling.
+- Validation.
+- Secure passwords with bcrypt.
+- Use environment variables.
+- Provide full source code.
+
+----------------------------------------------------
+SYSTEM ARCHITECTURE
+----------------------------------------------------
+Frontend:
+- Mobile App: React Native
+- Admin Panel: React (Vite)
+
+Backend:
+- Node.js
+- Express.js
+- MongoDB with Mongoose
+
+----------------------------------------------------
+DATABASE MODELS
+----------------------------------------------------
+
+User:
+- name
+- email
+- phone
+- password
+- role (admin/user)
+- createdAt
+
+Product:
+- title
+- description
+- price
+- discountPrice
+- stock
+- category
+- images[]
+- isActive
+- createdAt
+
+Category:
+- name
+- image
+- isActive
+
+Order:
+- userId
+- products[{productId, quantity, price}]
+- totalAmount
+- status (pending, confirmed, shipped, delivered, cancelled)
+- paymentMethod
+- paymentStatus
+- createdAt
+
+Cart:
+- userId
+- items[{productId, quantity}]
+
+Banner:
+- title
+- image
+- link
+
+----------------------------------------------------
+BACKEND FEATURES
+----------------------------------------------------
+
+Authentication:
+- Register user
+- Login user
+- Login admin
+- JWT token generation
+- Middleware protect routes
+- Role based middleware
+
+Admin APIs:
+- Create category
+- Update category
+- Delete category
+- Create product
+- Update product
+- Delete product
+- Upload product images
+- Create banner
+- Update banner
+- Delete banner
+- View users
+- View orders
+- Change order status
+
+User APIs:
+- Register
+- Login
+- View products
+- View categories
+- View banners
+- Add to cart
+- Update cart
+- Remove from cart
+- Place order
+- View my orders
+- Update profile
+
+----------------------------------------------------
+ADMIN PANEL FEATURES
+----------------------------------------------------
+
+Pages:
+- Admin Login
+- Dashboard
+- Product Management
+- Category Management
+- Order Management
+- User Management
+- Banner Management
+
+Capabilities:
+- Forms for CRUD
+- Image upload
+- Tables with pagination
+- Status change dropdown
+- Protected routes
+
+----------------------------------------------------
+MOBILE APP FEATURES
+----------------------------------------------------
+
+Screens:
+- Splash Screen
+- Login
+- Register
+- Home
+- Categories
+- Product List
+- Product Details
+- Cart
+- Checkout
+- Orders
+- Profile
+
+Functions:
+- JWT stored securely
+- Fetch products from backend
+- Add to cart
+- Place order
+- Show order status
+- Logout
+
+----------------------------------------------------
+TECHNICAL REQUIREMENTS
+----------------------------------------------------
+
+Backend:
+- Express MVC structure
+- Multer for image upload
+- Cloudinary for image storage
+- MongoDB Atlas connection
+- Centralized error handler
+
+Admin Panel:
+- Axios API service
+- Auth context
+- Protected routes
+
+Mobile App:
+- Axios
+- Context API or Redux
+- Environment based API URL
+
+----------------------------------------------------
+OUTPUT FORMAT
+----------------------------------------------------
+
+1) Folder structure
+2) Backend full code
+3) Admin panel full code
+4) Mobile app full code
+5) .env examples
+6) Step-by-step run instructions
+7) Deployment guide
+
+----------------------------------------------------
+FINAL GOAL
+----------------------------------------------------
+Admin posts product/category/banner from web admin panel.
+Same data must instantly appear in mobile app.
+Everything must be fully functional and tested.
+
+Generate complete working code now.
