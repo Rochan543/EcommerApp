@@ -63,6 +63,17 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").default("cod"),
   paymentStatus: text("payment_status").default("pending"),
+  razorpayOrderId: text("razorpay_order_id"),
+  razorpayPaymentId: text("razorpay_payment_id"),
+  shippingAddress: jsonb("shipping_address").$type<{
+    fullName: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -130,6 +141,18 @@ export const insertOrderSchema = z.object({
   ),
   totalAmount: z.number(),
   paymentMethod: z.string().optional(),
+  paymentStatus: z.string().optional(),
+  razorpayOrderId: z.string().optional(),
+  razorpayPaymentId: z.string().optional(),
+  shippingAddress: z.object({
+    fullName: z.string(),
+    phone: z.string(),
+    addressLine1: z.string(),
+    addressLine2: z.string().optional(),
+    city: z.string(),
+    state: z.string(),
+    pincode: z.string(),
+  }).optional(),
 });
 
 export const insertBannerSchema = createInsertSchema(banners).pick({

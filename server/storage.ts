@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -173,6 +173,10 @@ export class Storage {
     items: { productId: string; quantity: number; price: number; title: string }[];
     totalAmount: number;
     paymentMethod?: string;
+    paymentStatus?: string;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    shippingAddress?: any;
   }): Promise<Order> {
     const [order] = await db
       .insert(orders)
@@ -181,9 +185,44 @@ export class Storage {
         items: data.items,
         totalAmount: data.totalAmount,
         paymentMethod: data.paymentMethod || "cod",
+        paymentStatus: data.paymentStatus || "pending",
+        razorpayOrderId: data.razorpayOrderId,
+        razorpayPaymentId: data.razorpayPaymentId,
+        shippingAddress: data.shippingAddress,
       })
       .returning();
     return order;
+  }
+
+  async updateOrderPayment(
+    id: string,
+    data: { paymentStatus: string; razorpayPaymentId?: string }
+  ): Promise<Order | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set(data)
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
+  }
+
+  async getRecommendedProducts(
+    categoryId: string,
+    excludeProductId: string,
+    limit: number = 6
+  ): Promise<Product[]> {
+    const prods = await db
+      .select()
+      .from(products)
+      .where(
+        and(
+          eq(products.categoryId, categoryId),
+          eq(products.isActive, true),
+          ne(products.id, excludeProductId)
+        )
+      )
+      .limit(limit);
+    return prods;
   }
 
   async getOrdersByUser(userId: string): Promise<Order[]> {

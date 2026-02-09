@@ -1,0 +1,79 @@
+You are enhancing an existing eCommerce application.
+
+Implement ONLY the following features:
+
+-------------------------------------------------
+1. ADD "BUY NOW" BUTTON ON PRODUCT PAGE
+-------------------------------------------------
+- Place a prominent Buy Now button near Add to Cart.
+- On click:
+    - If user not logged in → redirect to login.
+    - If logged in → go directly to checkout page with selected product and quantity = 1.
+
+-------------------------------------------------
+2. PAYMENT GATEWAY INTEGRATION
+-------------------------------------------------
+Integrate Razorpay payment gateway (supports:
+GPay, PhonePe, UPI, Debit Card, Credit Card, NetBanking)
+
+Backend:
+- Create Razorpay order API.
+- Verify payment signature API.
+- Save transaction details in database.
+
+Frontend:
+- Show payment options modal:
+    - Google Pay (UPI)
+    - PhonePe (UPI)
+    - Debit Card
+    - Credit Card
+    - Cash On Delivery (COD)
+
+Flow:
+- If online payment success → place order.
+- If COD selected → directly place order with paymentStatus = "pending".
+- If payment fails → show error and do NOT place order.
+
+-------------------------------------------------
+3. CHECKOUT PAGE LOGIC
+-------------------------------------------------
+- Display selected product.
+- Quantity selector.
+- Address form.
+- Payment method selection.
+- Place Order button.
+
+-------------------------------------------------
+4. RECOMMENDED PRODUCTS SECTION
+-------------------------------------------------
+On product details page:
+
+- Show "Recommended Products".
+- Fetch products from same category.
+- Exclude current product.
+- Limit to 6 products.
+- Display:
+    - Image
+    - Name
+    - Price
+    - View button
+
+-------------------------------------------------
+5. DATABASE UPDATES
+-------------------------------------------------
+Order model must include:
+- paymentMethod
+- paymentStatus
+- razorpayOrderId
+- razorpayPaymentId
+
+-------------------------------------------------
+FINAL RESULT
+-------------------------------------------------
+- Buy Now works.
+- Payments work with Razorpay.
+- GPay / PhonePe / Cards available.
+- COD works.
+- Recommended products show correctly.
+
+Apply changes to existing code and return only updated files.
