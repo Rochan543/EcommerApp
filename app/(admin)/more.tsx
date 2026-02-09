@@ -23,7 +23,7 @@ import { queryClient } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 
-type SectionType = "users" | "banners" | "announcements" | null;
+type SectionType = "users" | "banners" | "announcements" | "reviews" | null;
 
 export default function AdminMore() {
   const insets = useSafeAreaInsets();
@@ -61,6 +61,19 @@ export default function AdminMore() {
     queryKey: ["admin", "announcements"],
     queryFn: () => apiFetch("/api/admin/announcements"),
     enabled: activeSection === "announcements",
+  });
+
+  const reviewsQuery = useQuery({
+    queryKey: ["admin", "reviews"],
+    queryFn: () => apiFetch("/api/admin/reviews"),
+    enabled: activeSection === "reviews",
+  });
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/admin/reviews/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "reviews"] });
+    },
   });
 
   const saveBannerMutation = useMutation({
@@ -258,6 +271,17 @@ export default function AdminMore() {
           <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
         </Pressable>
 
+        <Pressable style={styles.menuCard} onPress={() => setActiveSection("reviews")}>
+          <View style={[styles.menuIcon, { backgroundColor: "#F59E0B" }]}>
+            <Ionicons name="star" size={22} color={Colors.white} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>Reviews</Text>
+            <Text style={styles.menuDesc}>Manage product reviews</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+        </Pressable>
+
         <Pressable style={styles.menuCard} onPress={() => router.push("/(customer)")}>
           <View style={[styles.menuIcon, { backgroundColor: Colors.primary }]}>
             <Ionicons name="storefront" size={22} color={Colors.white} />
@@ -434,6 +458,77 @@ export default function AdminMore() {
             </View>
           </View>
         </Modal>
+      </View>
+    );
+  }
+
+  if (activeSection === "reviews") {
+    const reviewsData = reviewsQuery.data || [];
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
+          <Pressable onPress={() => setActiveSection(null)}>
+            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Reviews ({reviewsData.length})</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        {reviewsQuery.isLoading ? (
+          <ActivityIndicator size="large" color="#F59E0B" style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={reviewsData}
+            keyExtractor={(item: any) => item.id}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="star-outline" size={48} color={Colors.textLight} />
+                <Text style={styles.emptyText}>No reviews yet</Text>
+              </View>
+            }
+            renderItem={({ item }: { item: any }) => (
+              <View style={styles.bannerCard}>
+                <View style={{ gap: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#F59E0B", justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 13 }}>
+                          {(item.userName || "U").charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 14, color: Colors.text }}>{item.userName}</Text>
+                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: Colors.textLight }}>{item.productId ? `Product: ${item.productId.slice(0, 8)}...` : ""}</Text>
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        Alert.alert("Delete Review", "Are you sure you want to delete this review?", [
+                          { text: "Cancel" },
+                          { text: "Delete", style: "destructive", onPress: () => deleteReviewMutation.mutate(item.id) },
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                    </Pressable>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 2 }}>
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Ionicons key={s} name={s <= item.rating ? "star" : "star-outline"} size={16} color={s <= item.rating ? "#F59E0B" : Colors.textLight} />
+                    ))}
+                  </View>
+                  {item.comment ? (
+                    <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.textSecondary, lineHeight: 18 }}>{item.comment}</Text>
+                  ) : null}
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: Colors.textLight }}>
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                  </Text>
+                </View>
+              </View>
+            )}
+          />
+        )}
       </View>
     );
   }
