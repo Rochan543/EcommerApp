@@ -23,6 +23,7 @@ import {
   insertOrderSchema,
   insertBannerSchema,
   insertTicketSchema,
+  insertAnnouncementSchema,
 } from "../shared/schema";
 
 function getRazorpayInstance() {
@@ -1022,6 +1023,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // --- Announcements (Admin CRUD) ---
+  app.get(
+    "/api/admin/announcements",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (_req: any, res) => {
+      try {
+        const all = await storage.getAllAnnouncements();
+        return res.json(all);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/announcements",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const parsed = insertAnnouncementSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid input", errors: parsed.error.errors });
+        }
+        const ann = await storage.createAnnouncement({
+          title: parsed.data.title,
+          message: parsed.data.message || "",
+          image: parsed.data.image || "",
+          isActive: parsed.data.isActive ?? true,
+          startDate: new Date(parsed.data.startDate),
+          endDate: new Date(parsed.data.endDate),
+        });
+        return res.status(201).json(ann);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/announcements/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        const updates: any = { ...req.body };
+        if (updates.startDate) updates.startDate = new Date(updates.startDate);
+        if (updates.endDate) updates.endDate = new Date(updates.endDate);
+        const ann = await storage.updateAnnouncement(req.params.id, updates);
+        if (!ann) return res.status(404).json({ message: "Announcement not found" });
+        return res.json(ann);
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/announcements/:id",
+    authMiddleware as any,
+    adminMiddleware as any,
+    async (req: any, res) => {
+      try {
+        await storage.deleteAnnouncement(req.params.id);
+        return res.json({ message: "Announcement deleted" });
+      } catch (err: any) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+  );
+
+  // --- Announcements (User-facing) ---
+  app.get("/api/announcements/active", authMiddleware as any, async (req: any, res) => {
+    try {
+      const active = await storage.getActiveAnnouncementsForUser(req.user.id);
+      return res.json(active);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/announcements/viewed", authMiddleware as any, async (req: any, res) => {
+    try {
+      const { announcementId } = req.body;
+      if (!announcementId) return res.status(400).json({ message: "announcementId required" });
+      await storage.markAnnouncementViewed(req.user.id, announcementId);
+      return res.json({ message: "Marked as viewed" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
