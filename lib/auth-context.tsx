@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiUrl } from "./query-client";
@@ -20,35 +20,138 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: { name: string; phone: string }) => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = "ecom_auth_token";
+const REFRESH_TOKEN_KEY = "ecom_refresh_token";
 const USER_KEY = "ecom_auth_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   useEffect(() => {
-    loadStoredAuth();
+    restoreSession();
   }, []);
 
-  async function loadStoredAuth() {
+  async function restoreSession() {
     try {
+      const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
       const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
       const storedUser = await AsyncStorage.getItem(USER_KEY);
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+
+      if (!storedRefreshToken) {
+        await clearAuth();
+        return;
       }
+
+      try {
+        const baseUrl = getApiUrl();
+        const url = new URL("/api/auth/refresh", baseUrl);
+        const res = await fetch(url.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          await AsyncStorage.setItem(TOKEN_KEY, data.token);
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          setToken(data.token);
+          setUser(data.user);
+          return;
+        }
+      } catch {}
+
+      if (storedToken && storedUser) {
+        try {
+          const baseUrl = getApiUrl();
+          const url = new URL("/api/auth/me", baseUrl);
+          const res = await fetch(url.toString(), {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+
+          if (res.ok) {
+            const freshUser = await res.json();
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+            setToken(storedToken);
+            setUser(freshUser);
+            return;
+          }
+        } catch {}
+      }
+
+      await clearAuth();
     } catch {
+      await clearAuth();
     } finally {
       setIsLoading(false);
     }
   }
+
+  async function clearAuth() {
+    await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+    setToken(null);
+    setUser(null);
+  }
+
+  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+
+    const promise = (async () => {
+      try {
+        const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+        if (!storedRefreshToken) {
+          await clearAuth();
+          return null;
+        }
+
+        const baseUrl = getApiUrl();
+        const url = new URL("/api/auth/refresh", baseUrl);
+        const res = await fetch(url.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
+        });
+
+        if (!res.ok) {
+          await clearAuth();
+          return null;
+        }
+
+        const data = await res.json();
+        await AsyncStorage.setItem(TOKEN_KEY, data.token);
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        return data.token as string;
+      } catch {
+        await clearAuth();
+        return null;
+      } finally {
+        refreshPromiseRef.current = null;
+      }
+    })();
+
+    refreshPromiseRef.current = promise;
+    return promise;
+  }, []);
+
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
+    const current = await AsyncStorage.getItem(TOKEN_KEY);
+    if (current) return current;
+    return refreshAccessToken();
+  }, [refreshAccessToken]);
 
   async function login(email: string, password: string) {
     const baseUrl = getApiUrl();
@@ -66,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await res.json();
     await AsyncStorage.setItem(TOKEN_KEY, data.token);
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
@@ -87,30 +191,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await res.json();
     await AsyncStorage.setItem(TOKEN_KEY, data.token);
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
   }
 
   async function logout() {
-    await AsyncStorage.removeItem(TOKEN_KEY);
-    await AsyncStorage.removeItem(USER_KEY);
-    setToken(null);
-    setUser(null);
+    await clearAuth();
   }
 
   async function updateProfile(data: { name: string; phone: string }) {
-    if (!token) return;
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Not authenticated");
     const baseUrl = getApiUrl();
     const url = new URL("/api/auth/profile", baseUrl);
     const res = await fetch(url.toString(), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(data),
     });
+
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (!newToken) throw new Error("Session expired. Please log in again.");
+      const retryRes = await fetch(url.toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!retryRes.ok) {
+        const d = await retryRes.json();
+        throw new Error(d.message || "Update failed");
+      }
+      const updated = await retryRes.json();
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+      return;
+    }
 
     if (!res.ok) {
       const d = await res.json();
@@ -123,8 +247,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo(
-    () => ({ user, token, isLoading, login, register, logout, updateProfile }),
-    [user, token, isLoading]
+    () => ({ user, token, isLoading, login, register, logout, updateProfile, getAccessToken }),
+    [user, token, isLoading, getAccessToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
