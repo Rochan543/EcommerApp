@@ -178,7 +178,7 @@ function RecommendedProductCard({ item }: { item: any }) {
       style={recStyles.card}
       onPress={() => router.push(`/product/${item.id}`)}
     >
-      {item.images?.length > 0 ? (
+      {item.images && item.images[0] ? (
         <Image
           source={{ uri: getImageUrl(item.images[0]) }}
           style={recStyles.image}
@@ -303,13 +303,13 @@ export default function ProductDetailScreen() {
 
     const list = Array.isArray(res) ? res : [];
 
-    return list.map((p: any) => ({
-      id: p._id,
+   return list.map((p: any) => ({
+      id: p._id || p.id,
       title: p.title,
       price: p.price,
-      images: p.image ? [p.image] : [],
-      categoryId: p.category,
+      images: [p.image],   // 🔥 force image array
     }));
+
   },
   enabled: !!id,
 });

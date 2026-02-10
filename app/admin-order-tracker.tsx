@@ -120,7 +120,12 @@ export default function AdminOrderTracker() {
         }}
       />
 
-      <View style={{ paddingTop: Platform.OS === "web" ? 0 : 0 }}>
+      <View
+style={{
+    paddingTop: Platform.OS === "web" ? 20 : 60,
+  }}
+>
+
         <View style={styles.topBar}>
           <ScrollView
             horizontal
@@ -237,16 +242,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 10,
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  paddingTop: 20,     // ⬅ more gap from top
+  paddingBottom: 6,
+  gap: 10,
   },
-  filtersRow: {
-    gap: 8,
-    paddingRight: 8,
-  },
+
+filtersRow: {
+  gap: 8,
+  paddingRight: 8,
+},
+
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
