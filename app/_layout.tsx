@@ -17,6 +17,8 @@ import {
 } from "@expo-google-fonts/inter";
 import { StatusBar } from "expo-status-bar";
 
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
@@ -40,11 +42,16 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+
+    // ✅ LOAD ICON FONTS
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
