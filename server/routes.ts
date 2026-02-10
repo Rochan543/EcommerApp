@@ -817,6 +817,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
         const thirtyDaysAgo = new Date(startOfToday);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const sixtyDaysAgo = new Date(startOfToday);
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
 
         if (filter === "today") {
           allOrders = allOrders.filter((o) => o.createdAt && new Date(o.createdAt) >= startOfToday);
@@ -826,7 +829,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         } else if (filter === "last30") {
           allOrders = allOrders.filter((o) => o.createdAt && new Date(o.createdAt) >= thirtyDaysAgo);
+        } else if (filter === "last60") {
+          allOrders = allOrders.filter(
+            (o) => o.createdAt && new Date(o.createdAt) >= sixtyDaysAgo
+          );
         }
+
 
         const enriched = await Promise.all(
           allOrders.map(async (o) => {

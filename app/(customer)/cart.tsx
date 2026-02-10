@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 200,
+    paddingBottom: 260,
     gap: 10,
   },
   cartItem: {
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: "absolute",
-    bottom: 20,
+    bottom: 80, 
     left: 0,
     right: 0,
     backgroundColor: Colors.surface,

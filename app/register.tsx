@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 export default function RegisterScreen() {
   const { register } = useAuth();
   const insets = useSafeAreaInsets();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,17 +34,30 @@ export default function RegisterScreen() {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
+
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
+
     setLoading(true);
     try {
-      await register(name.trim(), email.trim().toLowerCase(), password, phone.trim());
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await register(
+        name.trim(),
+        email.trim().toLowerCase(),
+        password,
+        phone.trim()
+      );
+
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
+      }
+
       router.replace("/");
-    } catch (err: any) {
-      Alert.alert("Registration Failed", err.message || "Please try again");
+    } catch (err) {
+      Alert.alert("Registration Failed", "Please try again");
     } finally {
       setLoading(false);
     }
@@ -51,26 +65,28 @@ export default function RegisterScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}
+      style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      {/* ---------- HEADER ---------- */}
       <View style={styles.header}>
-          <Image
-            source={require("../assets/images/icon.jpeg")}
-            style={styles.logo}
-          />
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        </Pressable>
 
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </Pressable>
+        <Image
+          source={require("../assets/images/icon.jpeg")}
+          style={styles.logo}
+        />
 
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join us and start shopping</Text>
-        </View>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Join us and start shopping</Text>
+      </View>
 
-
+      {/* ---------- FORM ---------- */}
       <View style={styles.form}>
+        {/* Name */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Full Name *</Text>
           <View style={styles.inputWrap}>
@@ -78,14 +94,13 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="John Doe"
-              placeholderTextColor={Colors.textLight}
               value={name}
               onChangeText={setName}
-              autoCapitalize="words"
             />
           </View>
         </View>
 
+        {/* Email */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email *</Text>
           <View style={styles.inputWrap}>
@@ -93,31 +108,30 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="your@email.com"
-              placeholderTextColor={Colors.textLight}
-              value={email}
-              onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
             />
           </View>
         </View>
 
+        {/* Phone */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Phone</Text>
           <View style={styles.inputWrap}>
             <Ionicons name="call-outline" size={20} color={Colors.textSecondary} />
             <TextInput
               style={styles.input}
-              placeholder="+1 234 567 890"
-              placeholderTextColor={Colors.textLight}
+              placeholder="+91 9876543210"
+              keyboardType="phone-pad"
               value={phone}
               onChangeText={setPhone}
-              keyboardType="phone-pad"
             />
           </View>
         </View>
 
+        {/* Password */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Password *</Text>
           <View style={styles.inputWrap}>
@@ -125,10 +139,9 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Min 6 characters"
-              placeholderTextColor={Colors.textLight}
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
             />
             <Pressable onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
@@ -140,77 +153,93 @@ export default function RegisterScreen() {
           </View>
         </View>
 
+        {/* Button */}
         <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          style={styles.button}
           onPress={handleRegister}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={Colors.white} />
+            <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>Create Account</Text>
           )}
         </Pressable>
+      </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.footerLink}>Sign In</Text>
-          </Pressable>
-        </View>
+      {/* ---------- FOOTER ---------- */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Already have an account?</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.footerLink}> Sign In</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
 }
+
+/* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+
   content: {
     flexGrow: 1,
+    justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
+
   header: {
-  alignItems: "center",
-  paddingTop: 60,
-  paddingBottom: 40,
+    alignItems: "center",
+    paddingTop: 40,
   },
 
   backBtn: {
-  position: "absolute",
-  left: 0,
-  top: 20,
-  width: 40,
-  height: 40,
-  justifyContent: "center",
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
   },
-  
+
+  logo: {
+    width: 110,
+    height: 110,
+    resizeMode: "contain",
+    marginBottom: 20,
+  },
+
   title: {
     fontSize: 28,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "700",
     color: Colors.text,
-    marginBottom: 8,
   },
+
   subtitle: {
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
-    marginBottom: 10,
+    marginTop: 6,
   },
+
   form: {
     gap: 18,
   },
+
   inputGroup: {
-    gap: 8,
+    gap: 6,
   },
+
   label: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
     color: Colors.text,
   },
+
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -219,54 +248,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 14,
-    gap: 10,
     height: 52,
+    gap: 10,
   },
+
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
     color: Colors.text,
-    height: "100%",
   },
+
   button: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
     height: 52,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 10,
   },
-  buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
+
   buttonText: {
+    color: "#fff",
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.white,
+    fontWeight: "600",
   },
+
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 12,
   },
+
   footerText: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
   },
+
   footerLink: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
+    fontWeight: "600",
   },
-  logo: {
-  width: 110,
-  height: 110,
-  marginBottom: 20,
-  resizeMode: "contain",
-},
-
 });

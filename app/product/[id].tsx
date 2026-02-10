@@ -172,14 +172,15 @@ const zoomStyles = StyleSheet.create({
 
 function RecommendedProductCard({ item }: { item: any }) {
   const price = item.price;
+
   return (
     <Pressable
       style={recStyles.card}
       onPress={() => router.push(`/product/${item.id}`)}
     >
-      {item.image ? (
+      {item.images?.length > 0 ? (
         <Image
-          source={{ uri: getImageUrl(item.image) }}
+          source={{ uri: getImageUrl(item.images[0]) }}
           style={recStyles.image}
           contentFit="cover"
         />
@@ -188,12 +189,19 @@ function RecommendedProductCard({ item }: { item: any }) {
           <Ionicons name="image-outline" size={28} color={Colors.textLight} />
         </View>
       )}
+
       <View style={recStyles.info}>
-        <Text style={recStyles.name} numberOfLines={2}>{item.title}</Text>
-        <Text style={recStyles.price}>{formatINR(price)}</Text>
+        <Text style={recStyles.name} numberOfLines={2}>
+          {item.title}
+        </Text>
+
+        <Text style={recStyles.price}>
+          {formatINR(price)}
+        </Text>
+
         <Pressable
           style={recStyles.viewBtn}
-          onPress={() => router.push(`/product/${item._id}`)}
+          onPress={() => router.push(`/product/${item.id}`)}
         >
           <Text style={recStyles.viewText}>View Product</Text>
         </Pressable>
@@ -201,6 +209,7 @@ function RecommendedProductCard({ item }: { item: any }) {
     </Pressable>
   );
 }
+
 
 function StarRatingInput({ rating, onRate, size = 28 }: { rating: number; onRate: (r: number) => void; size?: number }) {
   return (
@@ -288,10 +297,23 @@ export default function ProductDetailScreen() {
   });
 
   const recommendedQuery = useQuery({
-    queryKey: ["recommended", id],
-    queryFn: () => apiFetch(`/api/products/recommended/${id}`),
-    enabled: !!id,
-  });
+  queryKey: ["recommended", id],
+  queryFn: async () => {
+    const res = await apiFetch(`/api/products/recommended/${id}`);
+
+    const list = Array.isArray(res) ? res : [];
+
+    return list.map((p: any) => ({
+      id: p._id,
+      title: p.title,
+      price: p.price,
+      images: p.image ? [p.image] : [],
+      categoryId: p.category,
+    }));
+  },
+  enabled: !!id,
+});
+
 
   const reviewsQuery = useQuery({
     queryKey: ["reviews", id],
@@ -341,6 +363,7 @@ export default function ProductDetailScreen() {
     const product = query.data;
     if (!product) return;
     const hasSizes = productSizes.length > 0;
+
     if (hasSizes && !selectedSize) {
       Alert.alert("Select Size", "Please select a size before purchasing");
       return;
@@ -362,7 +385,7 @@ export default function ProductDetailScreen() {
   const handleAddToCart = () => {
     const product = query.data;
     if (!product) return;
-    const hasSizes = productSizes.length > 0;
+    const hasSizes = product.sizes && (product.sizes as any[]).length > 0;
     if (hasSizes && !selectedSize) {
       Alert.alert("Select Size", "Please select a size before adding to cart");
       return;
@@ -391,7 +414,9 @@ export default function ProductDetailScreen() {
   const price = product.discountPrice || product.price;
   const hasDiscount = product.discountPrice && product.discountPrice < product.price;
   // const recommended = recommendedQuery.data || [];
-  const recommended = recommendedQuery.data?.products || [];
+  const recommended = Array.isArray(recommendedQuery.data)
+  ? recommendedQuery.data
+  : [];
   const reviewsList: any[] = reviewsQuery.data || [];
   const avgRating = reviewsList.length > 0
     ? reviewsList.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsList.length

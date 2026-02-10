@@ -222,11 +222,13 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: Colors.textSecondary },
 
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
+  flexDirection: "row",
+  justifyContent: "space-between",
+  paddingHorizontal: 16,
+  marginBottom: 14,
+  marginTop: 12,   // ✅ adds space from top
+},
+
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "600" },
 
@@ -234,6 +236,7 @@ const styles = StyleSheet.create({
   filterRow: {
     paddingHorizontal: 16,
     marginBottom: 16,
+    marginTop: 6,    // ✅ space between header & chips
   },
   filterChip: {
     paddingHorizontal: 14,
@@ -254,7 +257,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  orderInfo: { paddingHorizontal: 20, marginBottom: 20 },
+  orderInfo: {
+  paddingHorizontal: 20,
+  marginBottom: 24,
+  marginTop: 6,   // ✅ extra breathing space
+},
+
   orderId: { fontSize: 20, fontWeight: "700" },
   orderDate: { fontSize: 13, color: Colors.textSecondary },
 
