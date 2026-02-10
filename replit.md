@@ -1,4 +1,4 @@
-# ShopEase - E-Commerce Mobile App
+# MrPerfectFashionClub - E-Commerce Mobile App
 
 ## Overview
 Full-stack eCommerce system with Expo/React Native mobile app, Express backend, and PostgreSQL database. Features user authentication with role-based access (admin/customer), product catalog with categories, shopping cart, order management, promotional banners, Buy Now functionality, Razorpay payment gateway, and recommended products. Zero browser storage policy: all auth uses HTTP-only cookies, no localStorage/sessionStorage/AsyncStorage.

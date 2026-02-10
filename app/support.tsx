@@ -40,7 +40,7 @@ export default function SupportScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<"chat" | "tickets">("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: "1", text: "Hi! I'm your ShopEase assistant. How can I help you today?", isUser: false },
+    { id: "1", text: "Hi! I'm your MrPerfectFashionClub assistant. How can I help you today?", isUser: false },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);

@@ -173,7 +173,7 @@ export default function CheckoutScreen() {
       key: "${paymentOrder.keyId}",
       amount: ${paymentOrder.amount},
       currency: "${paymentOrder.currency}",
-      name: "ShopEase",
+      name: "MrPerfectFashionClub",
       description: "Order Payment",
       order_id: "${paymentOrder.orderId}",
       handler: function(response) {
@@ -200,7 +200,7 @@ export default function CheckoutScreen() {
           key: paymentOrder.keyId,
           amount: paymentOrder.amount,
           currency: paymentOrder.currency,
-          name: "ShopEase",
+          name: "MrPerfectFashionClub",
           description: "Order Payment",
           order_id: paymentOrder.orderId,
           handler: async (response: any) => {

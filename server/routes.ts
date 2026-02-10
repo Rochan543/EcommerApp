@@ -1026,7 +1026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               {
                 parts: [
                   {
-                    text: `You are a helpful customer support chatbot for ShopEase, an e-commerce platform. Keep responses concise (2-3 sentences max). Help with: order tracking, returns, shipping, product questions, account issues. If the issue requires human support, suggest creating a support ticket. User message: ${message}`,
+                    text: `You are a helpful customer support chatbot for MrPerfectFashionClub, an e-commerce platform. Keep responses concise (2-3 sentences max). Help with: order tracking, returns, shipping, product questions, account issues. If the issue requires human support, suggest creating a support ticket. User message: ${message}`,
                   },
                 ],
               },

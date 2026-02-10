@@ -63,7 +63,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { "User-Agent": "ShopEase-App/1.0" } }
+        { headers: { "User-Agent": "MrPerfectFashionClub-App/1.0" } }
       );
       const data = await response.json();
       const addr = data.address || {};
