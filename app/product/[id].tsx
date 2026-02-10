@@ -176,7 +176,7 @@ function RecommendedProductCard({ item }: { item: any }) {
   return (
     <Pressable
       style={recStyles.card}
-      onPress={() => router.push(`/product/${item.id}`)}
+      onPress={() => router.push(`/product/${item._id}`)}
     >
       {item.images && item.images[0] ? (
         <Image
@@ -201,7 +201,7 @@ function RecommendedProductCard({ item }: { item: any }) {
 
         <Pressable
           style={recStyles.viewBtn}
-          onPress={() => router.push(`/product/${item.id}`)}
+          onPress={() => router.push(`/product/${item._id}`)}
         >
           <Text style={recStyles.viewText}>View Product</Text>
         </Pressable>
@@ -296,24 +296,23 @@ export default function ProductDetailScreen() {
     queryFn: () => apiFetch(`/api/products/${id}`),
   });
 
-  const recommendedQuery = useQuery({
+const recommendedQuery = useQuery({
   queryKey: ["recommended", id],
   queryFn: async () => {
     const res = await apiFetch(`/api/products/recommended/${id}`);
 
     const list = Array.isArray(res) ? res : [];
 
-   return list.map((p: any) => ({
-    id: p._id || p.id,
-    title: p.title,
-    price: p.price,
-    images: p.image ? [p.image] : [],
-  }));
-
-
+    return list.map((p: any) => ({
+      _id: p._id,                    // ✅ keep backend id
+      title: p.title,
+      price: p.price,
+      images: p.image ? [p.image] : [],
+    }));
   },
   enabled: !!id,
 });
+
 
 
   const reviewsQuery = useQuery({
@@ -574,7 +573,7 @@ export default function ProductDetailScreen() {
               data={recommended}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item._id}
               contentContainerStyle={styles.recommendedList}
               renderItem={({ item }) => <RecommendedProductCard item={item} />}
               scrollEnabled={recommended.length > 0}

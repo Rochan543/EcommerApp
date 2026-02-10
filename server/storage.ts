@@ -236,23 +236,37 @@ export class Storage {
   }
 
   async getRecommendedProducts(
-    categoryId: string,
-    excludeProductId: string,
-    limit: number = 6
-  ): Promise<Product[]> {
-    const prods = await db
+  categoryId: string,
+  excludeProductId: string,
+  limit: number = 6
+): Promise<Product[]> {
+
+  // First try same category
+  let prods = await db
+    .select()
+    .from(products)
+    .where(
+      and(
+        eq(products.categoryId, categoryId),
+        ne(products.id, excludeProductId)
+      )
+    )
+    .orderBy(desc(products.createdAt))
+    .limit(limit);
+
+  // Fallback → show any products if none found
+  if (prods.length === 0) {
+    prods = await db
       .select()
       .from(products)
-      .where(
-        and(
-          eq(products.categoryId, categoryId),
-          eq(products.isActive, true),
-          ne(products.id, excludeProductId)
-        )
-      )
+      .where(ne(products.id, excludeProductId))
+      .orderBy(desc(products.createdAt))
       .limit(limit);
-    return prods;
   }
+
+  return prods;
+}
+
 
   async getOrdersByUser(userId: string): Promise<Order[]> {
     return db
