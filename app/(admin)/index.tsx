@@ -41,10 +41,10 @@ export default function AdminDashboard() {
   };
 
   const cards = [
-    { label: "Total Users", value: stats.totalUsers, icon: "people" as const, color: "#3B82F6", bg: "#EFF6FF" },
-    { label: "Products", value: stats.totalProducts, icon: "cube" as const, color: "#8B5CF6", bg: "#F5F3FF" },
-    { label: "Orders", value: stats.totalOrders, icon: "receipt" as const, color: "#F59E0B", bg: "#FFFBEB" },
-    { label: "Revenue", value: formatINR(stats.totalRevenue), icon: "cash" as const, color: "#16A34A", bg: "#F0FDF4" },
+    { label: "Total Users", value: stats.totalUsers, icon: "people", color: "#3B82F6", bg: "#EFF6FF" },
+    { label: "Products", value: stats.totalProducts, icon: "cube", color: "#8B5CF6", bg: "#F5F3FF" },
+    { label: "Orders", value: stats.totalOrders, icon: "receipt", color: "#F59E0B", bg: "#FFFBEB" },
+    { label: "Revenue", value: formatINR(stats.totalRevenue), icon: "cash", color: "#16A34A", bg: "#F0FDF4" },
   ];
 
   const dateStr = clock.toLocaleDateString("en-IN", {
@@ -53,6 +53,7 @@ export default function AdminDashboard() {
     month: "long",
     day: "numeric",
   });
+
   const timeStr = clock.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -75,6 +76,7 @@ export default function AdminDashboard() {
         />
       }
     >
+      {/* HEADER */}
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>Hey {user?.name || "Admin"} 👋</Text>
@@ -85,6 +87,7 @@ export default function AdminDashboard() {
         </Pressable>
       </View>
 
+      {/* CLOCK */}
       <View style={styles.clockCard}>
         <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
         <Text style={styles.dateText}>{dateStr}</Text>
@@ -94,29 +97,53 @@ export default function AdminDashboard() {
         </View>
       </View>
 
+      {/* STATS */}
       {statsQuery.isLoading ? (
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.cardsRow}
-          decelerationRate="fast"
-        >
+        <View style={styles.statsGrid}>
           {cards.map((card) => (
             <View key={card.label} style={[styles.statCard, { backgroundColor: card.bg }]}>
               <View style={[styles.iconCircle, { backgroundColor: card.color }]}>
-                <Ionicons name={card.icon} size={20} color={Colors.white} />
+                <Ionicons name={card.icon as any} size={20} color={Colors.white} />
               </View>
               <Text style={styles.statValue}>{card.value}</Text>
               <Text style={styles.statLabel}>{card.label}</Text>
             </View>
           ))}
-        </ScrollView>
+        </View>
       )}
 
+      {/* ANALYTICS SUMMARY */}
+      <View style={styles.analyticsCard}>
+        <Text style={styles.analyticsTitle}>Analytics Summary</Text>
+
+        <View style={styles.analyticsRow}>
+          <Text style={styles.analyticsLabel}>Conversion Rate</Text>
+          <Text style={styles.analyticsValue}>--%</Text>
+        </View>
+
+        <View style={styles.analyticsRow}>
+          <Text style={styles.analyticsLabel}>Avg Order Value</Text>
+          <Text style={styles.analyticsValue}>
+            {stats.totalOrders > 0
+              ? formatINR(stats.totalRevenue / stats.totalOrders)
+              : formatINR(0)}
+          </Text>
+        </View>
+
+        <View style={styles.analyticsRow}>
+          <Text style={styles.analyticsLabel}>Returning Customers</Text>
+          <Text style={styles.analyticsValue}>--</Text>
+        </View>
+      </View>
+
+      {/* ORDER TRACKER */}
       <Pressable
-        style={({ pressed }) => [styles.trackerButton, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+        style={({ pressed }) => [
+          styles.trackerButton,
+          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+        ]}
         onPress={() => router.push("/admin-order-tracker")}
       >
         <View style={styles.trackerIconWrap}>
@@ -133,27 +160,14 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  greeting: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: Colors.text,
-  },
-  welcomeText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+  container: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 20 },
+
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+
+  greeting: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
+
+  welcomeText: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+
   logoutBtn: {
     width: 42,
     height: 42,
@@ -162,49 +176,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FEE2E2",
   },
+
   clockCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.surface,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    padding: 14,
     marginBottom: 20,
     gap: 8,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  dateText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.text,
-  },
+
+  dateText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.text },
+
   timeBadge: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 4,
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  timeText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.white,
-  },
-  cardsRow: {
+
+  timeText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
+
+  /* GRID */
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12,
-    paddingRight: 20,
     marginBottom: 24,
   },
+
   statCard: {
-    width: 150,
+    width: "48%",
     borderRadius: 16,
     padding: 16,
     gap: 8,
   },
+
   iconCircle: {
     width: 40,
     height: 40,
@@ -212,17 +225,47 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  statValue: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: Colors.text,
-    marginTop: 4,
+
+  statValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
+
+  statLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+
+  /* ANALYTICS */
+  analyticsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
-  statLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+
+  analyticsTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 12,
+    color: Colors.text,
+  },
+
+  analyticsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  analyticsLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
   },
+
+  analyticsValue: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+
+  /* TRACKER */
   trackerButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -233,6 +276,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+
   trackerIconWrap: {
     width: 48,
     height: 48,
@@ -241,15 +285,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  trackerTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.text,
-  },
-  trackerSubtitle: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+
+  trackerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text },
+
+  trackerSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
 });

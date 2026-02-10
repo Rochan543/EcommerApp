@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { useLocalSearchParams, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
 import { formatINR } from "@/lib/format";
 import Colors from "@/constants/colors";
@@ -28,9 +28,12 @@ export default function OrderTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
 
+  /* ✅ ADDED */
+  const [filter, setFilter] = useState("all");
+
   const query = useQuery({
-    queryKey: ["orders", id],
-    queryFn: () => apiFetch(`/api/orders/${id}`),
+    queryKey: ["orders", id, filter], // ✅ added filter
+    queryFn: () => apiFetch(`/api/orders/${id}?filter=${filter}`),
     enabled: !!id,
   });
 
@@ -54,13 +57,18 @@ export default function OrderTrackingScreen() {
   }
 
   const lastCompletedIndex = [...trackingSteps].reverse().findIndex((s: any) => s.completed);
-  const currentStepIndex = lastCompletedIndex >= 0 ? trackingSteps.length - 1 - lastCompletedIndex : -1;
+  const currentStepIndex =
+    lastCompletedIndex >= 0 ? trackingSteps.length - 1 - lastCompletedIndex : -1;
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingTop: Platform.OS === "web" ? 67 : insets.top, paddingBottom: 40 }}
+      contentContainerStyle={{
+        paddingTop: Platform.OS === "web" ? 90 : insets.top + 20,   // ✅ moved slightly down
+        paddingBottom: 40,
+      }}
     >
+      {/* HEADER */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -69,13 +77,51 @@ export default function OrderTrackingScreen() {
         <View style={{ width: 40 }} />
       </View>
 
+      {/* ✅ FILTER BAR ADDED */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+        {[
+          { label: "All", value: "all" },
+          { label: "Today", value: "today" },
+          { label: "Yesterday", value: "yesterday" },
+          { label: "30 Days", value: "last30" },
+          { label: "60 Days", value: "last60" },
+        ].map((f) => (
+          <Pressable
+            key={f.value}
+            onPress={() => setFilter(f.value)}
+            style={[
+              styles.filterChip,
+              filter === f.value && styles.filterChipActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === f.value && styles.filterTextActive,
+              ]}
+            >
+              {f.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* ORDER INFO */}
       <View style={styles.orderInfo}>
         <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
         <Text style={styles.orderDate}>
-          Placed on {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : ""}
+          Placed on{" "}
+          {order.createdAt
+            ? new Date(order.createdAt).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : ""}
         </Text>
       </View>
 
+      {/* TRACKING CARD */}
       <View style={styles.trackingCard}>
         <Text style={styles.trackingTitle}>Delivery Status</Text>
 
@@ -83,7 +129,8 @@ export default function OrderTrackingScreen() {
           const isCompleted = step.completed;
           const isCurrent = index === currentStepIndex;
           const isLast = index === trackingSteps.length - 1;
-          const iconData = stepIcons[step.step] || { name: "ellipse-outline", family: "ionicons" };
+          const iconData =
+            stepIcons[step.step] || { name: "ellipse-outline", family: "ionicons" };
 
           return (
             <View key={index} style={styles.stepRow}>
@@ -105,6 +152,7 @@ export default function OrderTrackingScreen() {
                     />
                   )}
                 </View>
+
                 {!isLast && (
                   <View
                     style={[
@@ -125,6 +173,7 @@ export default function OrderTrackingScreen() {
                 >
                   {step.step}
                 </Text>
+
                 {step.completedAt && (
                   <Text style={styles.stepTime}>
                     {new Date(step.completedAt).toLocaleString("en-IN", {
@@ -135,76 +184,92 @@ export default function OrderTrackingScreen() {
                     })}
                   </Text>
                 )}
-                {isCurrent && isCompleted && step.step !== "Delivered" && (
-                  <View style={styles.currentBadge}>
-                    <Text style={styles.currentBadgeText}>Current Status</Text>
-                  </View>
-                )}
               </View>
             </View>
           );
         })}
       </View>
 
+      {/* DETAILS */}
       <View style={styles.detailsCard}>
         <Text style={styles.detailsTitle}>Order Details</Text>
+
         {(order.items as any[]).map((item: any, i: number) => (
           <View key={i} style={styles.itemRow}>
-            <Text style={styles.itemText} numberOfLines={1}>{item.quantity}x {item.title}</Text>
-            <Text style={styles.itemPrice}>{formatINR(item.price * item.quantity)}</Text>
+            <Text style={styles.itemText}>
+              {item.quantity}x {item.title}
+            </Text>
+            <Text style={styles.itemPrice}>
+              {formatINR(item.price * item.quantity)}
+            </Text>
           </View>
         ))}
+
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalAmount}>{formatINR(order.totalAmount)}</Text>
         </View>
       </View>
-
-      {order.shippingAddress && (
-        <View style={styles.detailsCard}>
-          <Text style={styles.detailsTitle}>Shipping Address</Text>
-          <Text style={styles.addressText}>{(order.shippingAddress as any).fullName}</Text>
-          <Text style={styles.addressText}>{(order.shippingAddress as any).addressLine1}</Text>
-          {(order.shippingAddress as any).addressLine2 && (
-            <Text style={styles.addressText}>{(order.shippingAddress as any).addressLine2}</Text>
-          )}
-          <Text style={styles.addressText}>
-            {(order.shippingAddress as any).city}, {(order.shippingAddress as any).state} {(order.shippingAddress as any).pincode}
-          </Text>
-        </View>
-      )}
     </ScrollView>
   );
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background },
-  errorText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  errorText: { fontSize: 16, color: Colors.textSecondary },
+
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom: 10,
   },
-  backBtn: { width: 40, height: 40, justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "600" },
+
+  /* ✅ FILTER */
+  filterRow: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+  },
+  filterText: {
+    fontSize: 13,
+    color: Colors.text,
+  },
+  filterTextActive: {
+    color: Colors.white,
+    fontWeight: "600",
+  },
+
   orderInfo: { paddingHorizontal: 20, marginBottom: 20 },
-  orderId: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
-  orderDate: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 4 },
+  orderId: { fontSize: 20, fontWeight: "700" },
+  orderDate: { fontSize: 13, color: Colors.textSecondary },
+
   trackingCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 20,
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    padding: 20,
+    borderRadius: 16,
   },
-  trackingTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text, marginBottom: 20 },
+
+  trackingTitle: { fontSize: 16, marginBottom: 20 },
+
   stepRow: { flexDirection: "row", gap: 16 },
   stepIndicator: { alignItems: "center", width: 32 },
+
   stepCircle: {
     width: 32,
     height: 32,
@@ -212,57 +277,44 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceAlt,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: Colors.border,
-    zIndex: 1,
   },
-  stepCircleCompleted: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  stepCircleCurrent: { borderColor: Colors.primary, backgroundColor: "#F0FDF4" },
-  stepConnector: {
-    width: 2,
-    flex: 1,
-    backgroundColor: Colors.border,
-    marginTop: -2,
-  },
+  stepCircleCompleted: { backgroundColor: Colors.primary },
+  stepCircleCurrent: { borderColor: Colors.primary },
+
+  stepConnector: { width: 2, flex: 1, backgroundColor: Colors.border },
   stepConnectorCompleted: { backgroundColor: Colors.primary },
-  stepContent: { flex: 1, paddingTop: 4 },
-  stepName: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.textLight },
-  stepNameCompleted: { color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  stepNameCurrent: { color: Colors.primary, fontFamily: "Inter_600SemiBold" },
-  stepTime: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
-  currentBadge: {
-    backgroundColor: "#DBEAFE",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    alignSelf: "flex-start",
-    marginTop: 6,
-  },
-  currentBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#3B82F6" },
+
+  stepContent: { flex: 1 },
+  stepName: { color: Colors.textLight },
+  stepNameCompleted: { color: Colors.text },
+  stepNameCurrent: { color: Colors.primary },
+  stepTime: {
+  fontSize: 12,
+  color: Colors.textSecondary,
+},
+
+
   detailsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 20,
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    gap: 8,
+    padding: 20,
+    borderRadius: 16,
+    marginTop: 16,
   },
-  detailsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text, marginBottom: 4 },
-  itemRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  itemText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginRight: 8 },
-  itemPrice: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+
+  detailsTitle: { fontSize: 16, marginBottom: 8 },
+  itemRow: { flexDirection: "row", justifyContent: "space-between" },
+  itemText: { color: Colors.textSecondary },
+  itemPrice: { fontWeight: "600" },
+
   totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
+    marginTop: 10,
     paddingTop: 10,
-    marginTop: 4,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  totalLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  totalAmount: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.primary },
-  addressText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  totalLabel: { fontSize: 15 },
+  totalAmount: { fontSize: 18, color: Colors.primary },
 });

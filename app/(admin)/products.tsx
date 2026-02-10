@@ -21,6 +21,8 @@ import { apiFetch, getImageUrl } from "@/lib/api";
 import { formatINR } from "@/lib/format";
 import { queryClient } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+import * as ImagePicker from "expo-image-picker";
+
 
 export default function AdminProducts() {
   const insets = useSafeAreaInsets();
@@ -150,7 +152,49 @@ export default function AdminProducts() {
 
   const products = productsQuery.data || [];
   const categories = categoriesQuery.data || [];
+    // ===============================
+  // IMAGE PICKER (UPLOAD FROM PHONE)
+  // ===============================
+  async function pickImageFromDevice() {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert("Permission required", "Please allow gallery access");
+    return;
+  }
 
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.8,
+  });
+
+  if (!result.canceled) {
+    const file = result.assets[0];
+
+    const formData = new FormData();
+    formData.append("image", {
+      uri: file.uri,
+      name: "product.jpg",
+      type: "image/jpeg",
+    } as any);
+
+    try {
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_BASE_URL}/api/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      setImageUrl(data.url);
+    } catch (err) {
+      Alert.alert("Upload failed", "Could not upload image");
+    }
+  }
+}
+
+  
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
@@ -221,6 +265,11 @@ export default function AdminProducts() {
               </View>
               <TextInput style={styles.modalInput} placeholder="Stock" value={stock} onChangeText={setStock} keyboardType="number-pad" placeholderTextColor={Colors.textLight} />
               <TextInput style={styles.modalInput} placeholder="Image URL" value={imageUrl} onChangeText={setImageUrl} placeholderTextColor={Colors.textLight} />
+              <Pressable style={styles.uploadBtn} onPress={pickImageFromDevice}>
+              <Ionicons name="cloud-upload-outline" size={18} color={Colors.white} />
+              <Text style={styles.uploadBtnText}>Upload From Device</Text>
+            </Pressable>
+
 
               {categories.length > 0 && (
                 <View style={styles.categoryPicker}>
@@ -349,4 +398,19 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.text },
   saveBtn: { backgroundColor: "#8B5CF6", borderRadius: 12, height: 48, justifyContent: "center", alignItems: "center", marginTop: 8 },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+    uploadBtn: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#8B5CF6",
+    paddingVertical: 12,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  uploadBtnText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

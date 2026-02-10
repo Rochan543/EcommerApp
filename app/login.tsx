@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ScrollView,
+  Image, 
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,6 +50,14 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
+        
+        {/* ✅ LOGO ADDED */}
+        <Image
+          source={require("../assets/images/icon.jpeg")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
         <View style={styles.iconWrap}>
           <Ionicons name="storefront" size={40} color={Colors.white} />
         </View>
@@ -232,4 +241,10 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: Colors.primary,
   },
+  logo: {
+  width: 110,
+  height: 110,
+  marginBottom: 20,
+},
+
 });

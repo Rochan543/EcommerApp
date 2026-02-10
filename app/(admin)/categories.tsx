@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { apiFetch, getImageUrl } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+import * as ImagePicker from "expo-image-picker";   // ✅ ADDED
 
 export default function AdminCategories() {
   const insets = useSafeAreaInsets();
@@ -27,6 +28,25 @@ export default function AdminCategories() {
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [isActive, setIsActive] = useState(true);
+    // ✅ ADDED
+async function pickImage() {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert("Permission required", "Allow gallery access");
+    return;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],   // ✅ FIXED
+    quality: 0.7,
+  });
+
+  if (!result.canceled) {
+    setImage(result.assets[0].uri);
+  }
+}
+
+
 
   const query = useQuery({
     queryKey: ["admin", "categories"],
@@ -155,6 +175,11 @@ export default function AdminCategories() {
             <View style={styles.modalForm}>
               <TextInput style={styles.modalInput} placeholder="Category Name *" value={name} onChangeText={setName} placeholderTextColor={Colors.textLight} />
               <TextInput style={styles.modalInput} placeholder="Image URL" value={image} onChangeText={setImage} placeholderTextColor={Colors.textLight} />
+              {/* ✅ DEVICE UPLOAD BUTTON */}
+              <Pressable style={styles.uploadBtn} onPress={pickImage}>
+                <Ionicons name="image-outline" size={18} color={Colors.white} />
+                <Text style={styles.uploadText}>Pick From Device</Text>
+              </Pressable>
               <View style={styles.switchRow}>
                 <Text style={styles.switchLabel}>Active</Text>
                 <Switch value={isActive} onValueChange={setIsActive} trackColor={{ true: "#8B5CF6" }} />
@@ -204,4 +229,20 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.text },
   saveBtn: { backgroundColor: "#8B5CF6", borderRadius: 12, height: 48, justifyContent: "center", alignItems: "center", marginTop: 8 },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  uploadBtn: {
+  backgroundColor: "#8B5CF6",
+  height: 44,
+  borderRadius: 10,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+},
+
+uploadText: {
+  color: Colors.white,
+  fontSize: 14,
+  fontFamily: "Inter_500Medium",
+},
+
 });
