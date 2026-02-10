@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MrPerfectFashionClub",
-    "slug": "MrPerfectFashionClub",
+    "slug": "shopease",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.jpeg",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.jpeg",  
+      "image": "./assets/images/icon.jpeg",
       "resizeMode": "contain",
       "backgroundColor": "#FEFAE0"
     },
@@ -44,15 +44,15 @@
       "reactCompiler": true
     },
     "extra": {
-  "EXPO_PUBLIC_DOMAIN": "ecommerapp.onrender.com",
-  "EXPO_PUBLIC_API_BASE_URL": "https://ecommerapp.onrender.com",
-  "router": {
-    "origin": "https://replit.com/"
-  },
-  "eas": {
-    "projectId": "c66ecc94-8224-4669-bede-1dd75cf902e1"
-  }
-},
+      "EXPO_PUBLIC_DOMAIN": "ecommerapp.onrender.com",
+      "EXPO_PUBLIC_API_BASE_URL": "https://ecommerapp.onrender.com",
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "c66ecc94-8224-4669-bede-1dd75cf902e1"
+      }
+    },
     "owner": "premrochan"
   }
 }
