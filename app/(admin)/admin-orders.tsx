@@ -157,10 +157,13 @@ export default function AdminOrders() {
                 </View>
                 <View style={styles.itemsList}>
                   {(item.items as any[]).map((prod: any, i: number) => (
-                    <Text key={i} style={styles.itemText} numberOfLines={1}>
-                      {prod.quantity}x {prod.title} - {formatINR(prod.price * prod.quantity)}
-                    </Text>
-                  ))}
+                  <Text key={i} style={styles.itemText} numberOfLines={1}>
+                    {prod.quantity}x {prod.title}
+                    {prod.size ? ` (Size: ${prod.size})` : ""} -{" "}
+                    {formatINR(prod.price * prod.quantity)}
+                  </Text>
+                ))}
+
                 </View>
 
                 {steps.length > 0 && (

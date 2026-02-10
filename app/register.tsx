@@ -173,6 +173,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    alignItems: "center",
     paddingTop: 20,
     paddingBottom: 30,
   },
@@ -180,6 +181,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     justifyContent: "center",
+    alignSelf: "flex-start",
     marginBottom: 16,
   },
   title: {
@@ -192,6 +194,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+    marginBottom: 10,
   },
   form: {
     gap: 18,
@@ -255,10 +258,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
   },
-  logo: {
-  width: 110,
-  height: 110,
-  marginBottom: 20,
+logo: {
+  width: 120,
+  height: 120,
+  resizeMode: "contain",
+  marginBottom: 12,
 },
+
 
 });

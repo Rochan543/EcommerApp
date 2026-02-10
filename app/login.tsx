@@ -9,7 +9,7 @@ import {
   Alert,
   Platform,
   ScrollView,
-  Image, 
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,10 +34,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/");
-    } catch (err: any) {
-      Alert.alert("Login Failed", err.message || "Invalid credentials");
+    } catch (err) {
+      Alert.alert("Login Failed", "Invalid credentials");
     } finally {
       setLoading(false);
     }
@@ -49,23 +50,20 @@ export default function LoginScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      {/* ===== HEADER ===== */}
       <View style={styles.header}>
-        
-        {/* ✅ LOGO ADDED */}
         <Image
           source={require("../assets/images/icon.jpeg")}
           style={styles.logo}
-          resizeMode="contain"
         />
 
-        <View style={styles.iconWrap}>
-          <Ionicons name="storefront" size={40} color={Colors.white} />
-        </View>
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue shopping</Text>
       </View>
 
+      {/* ===== FORM ===== */}
       <View style={styles.form}>
+        {/* Email */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputWrap}>
@@ -78,12 +76,11 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoComplete="email"
-              testID="login-email"
             />
           </View>
         </View>
 
+        {/* Password */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputWrap}>
@@ -95,7 +92,6 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              testID="login-password"
             />
             <Pressable onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
@@ -107,11 +103,11 @@ export default function LoginScreen() {
           </View>
         </View>
 
+        {/* Button */}
         <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          style={styles.button}
           onPress={handleLogin}
           disabled={loading}
-          testID="login-submit"
         >
           {loading ? (
             <ActivityIndicator color={Colors.white} />
@@ -120,10 +116,12 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        <Pressable style={styles.forgotBtn} onPress={() => router.push("/forgot-password" as any)}>
+        {/* Forgot */}
+        <Pressable style={styles.forgotBtn} onPress={() => router.push("/forgot-password")}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </Pressable>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
           <Pressable onPress={() => router.push("/register")}>
@@ -135,52 +133,53 @@ export default function LoginScreen() {
   );
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
+
   header: {
     alignItems: "center",
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 40,
+    paddingBottom: 30,
   },
-  iconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
+
+  logo: {
+    width: 120,
+    height: 120,
+    resizeMode: "contain",
+    marginBottom: 16,
   },
+
   title: {
     fontSize: 28,
     fontFamily: "Inter_700Bold",
     color: Colors.text,
-    marginBottom: 8,
   },
+
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+    marginTop: 4,
   },
-  form: {
-    gap: 20,
-  },
-  inputGroup: {
-    gap: 8,
-  },
+
+  form: { gap: 18 },
+
+  inputGroup: { gap: 8 },
+
   label: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: Colors.text,
   },
+
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,62 +188,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 14,
-    gap: 10,
     height: 52,
+    gap: 10,
   },
+
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: "Inter_400Regular",
     color: Colors.text,
-    height: "100%",
   },
+
   button: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
     height: 52,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
-  buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
+
   buttonText: {
+    color: Colors.white,
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.white,
   },
+
+  forgotBtn: { alignItems: "center" },
+
+  forgotText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+
   footer: {
     flexDirection: "row",
     justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 12,
+    marginTop: 10,
   },
+
   footerText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+    fontSize: 14,
   },
+
   footerLink: {
+    color: Colors.primary,
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.primary,
   },
-  forgotBtn: {
-    alignItems: "center",
-    paddingVertical: 4,
-  },
-  forgotText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.primary,
-  },
-  logo: {
-  width: 110,
-  height: 110,
-  marginBottom: 20,
-},
-
 });

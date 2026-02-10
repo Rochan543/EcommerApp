@@ -175,7 +175,7 @@ function RecommendedProductCard({ item }: { item: any }) {
   return (
     <Pressable
       style={recStyles.card}
-      onPress={() => router.push(`/product/${item._id}`)}
+      onPress={() => router.push(`/product/${item.id}`)}
     >
       {item.image ? (
         <Image
@@ -390,14 +390,19 @@ export default function ProductDetailScreen() {
   const images = product.images || [];
   const price = product.discountPrice || product.price;
   const hasDiscount = product.discountPrice && product.discountPrice < product.price;
-  const recommended = recommendedQuery.data || [];
+  // const recommended = recommendedQuery.data || [];
+  const recommended = recommendedQuery.data?.products || [];
   const reviewsList: any[] = reviewsQuery.data || [];
   const avgRating = reviewsList.length > 0
     ? reviewsList.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsList.length
     : 0;
   const userAlreadyReviewed = user ? reviewsList.some((r: any) => r.userId === user.id) : false;
-  const productSizes: { label: string; stock: number }[] = product.sizes || [];
+  // const productSizes: { label: string; stock: number }[] = product.sizes || [];
+  const productSizes: { label: string; stock: number }[] =
+  Array.isArray(product.sizes) ? product.sizes : [];
   const hasSizes = productSizes.length > 0;
+  console.log("SIZES FROM API 👉", productSizes);
+
 
   return (
     <View style={styles.container}>
@@ -533,7 +538,7 @@ export default function ProductDetailScreen() {
               data={recommended}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => item.id}
               contentContainerStyle={styles.recommendedList}
               renderItem={({ item }) => <RecommendedProductCard item={item} />}
               scrollEnabled={recommended.length > 0}
