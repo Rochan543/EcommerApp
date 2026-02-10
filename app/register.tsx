@@ -56,18 +56,19 @@ export default function RegisterScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-          {/* ✅ LOGO */}
-  <Image
-    source={require("../assets/images/icon.jpeg")}
-    style={styles.logo}
-    resizeMode="contain"
-  />
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join us and start shopping</Text>
-      </View>
+          <Image
+            source={require("../assets/images/icon.jpeg")}
+            style={styles.logo}
+          />
+
+          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          </Pressable>
+
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join us and start shopping</Text>
+        </View>
+
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
@@ -173,17 +174,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 30,
+  alignItems: "center",
+  paddingTop: 60,
+  paddingBottom: 40,
   },
+
   backBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignSelf: "flex-start",
-    marginBottom: 16,
+  position: "absolute",
+  left: 0,
+  top: 20,
+  width: 40,
+  height: 40,
+  justifyContent: "center",
   },
+  
   title: {
     fontSize: 28,
     fontFamily: "Inter_700Bold",
@@ -258,12 +262,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
   },
-logo: {
-  width: 120,
-  height: 120,
+  logo: {
+  width: 110,
+  height: 110,
+  marginBottom: 20,
   resizeMode: "contain",
-  marginBottom: 12,
 },
-
 
 });

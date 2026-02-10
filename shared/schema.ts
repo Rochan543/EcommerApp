@@ -168,6 +168,7 @@ export const insertProductSchema = createInsertSchema(products).pick({
   stock: true,
   categoryId: true,
   images: true,
+  sizes: true,      // 👈 REQUIRED
   isActive: true,
 });
 

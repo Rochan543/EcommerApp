@@ -340,7 +340,7 @@ export default function ProductDetailScreen() {
     }
     const product = query.data;
     if (!product) return;
-    const hasSizes = product.sizes && (product.sizes as any[]).length > 0;
+    const hasSizes = productSizes.length > 0;
     if (hasSizes && !selectedSize) {
       Alert.alert("Select Size", "Please select a size before purchasing");
       return;
@@ -362,7 +362,7 @@ export default function ProductDetailScreen() {
   const handleAddToCart = () => {
     const product = query.data;
     if (!product) return;
-    const hasSizes = product.sizes && (product.sizes as any[]).length > 0;
+    const hasSizes = productSizes.length > 0;
     if (hasSizes && !selectedSize) {
       Alert.alert("Select Size", "Please select a size before adding to cart");
       return;
@@ -399,7 +399,16 @@ export default function ProductDetailScreen() {
   const userAlreadyReviewed = user ? reviewsList.some((r: any) => r.userId === user.id) : false;
   // const productSizes: { label: string; stock: number }[] = product.sizes || [];
   const productSizes: { label: string; stock: number }[] =
-  Array.isArray(product.sizes) ? product.sizes : [];
+  Array.isArray(product.sizes) && product.sizes.length > 0
+    ? product.sizes
+    : [
+        { label: "S", stock: product.stock },
+        { label: "M", stock: product.stock },
+        { label: "L", stock: product.stock },
+        { label: "XL", stock: product.stock },
+        { label: "XXL", stock: product.stock },
+      ];
+
   const hasSizes = productSizes.length > 0;
   console.log("SIZES FROM API 👉", productSizes);
 
