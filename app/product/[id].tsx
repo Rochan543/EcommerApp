@@ -304,11 +304,12 @@ export default function ProductDetailScreen() {
     const list = Array.isArray(res) ? res : [];
 
    return list.map((p: any) => ({
-      id: p._id || p.id,
-      title: p.title,
-      price: p.price,
-      images: [p.image],   // 🔥 force image array
-    }));
+    id: p._id || p.id,
+    title: p.title,
+    price: p.price,
+    images: p.image ? [p.image] : [],
+  }));
+
 
   },
   enabled: !!id,
@@ -417,6 +418,7 @@ export default function ProductDetailScreen() {
   const recommended = Array.isArray(recommendedQuery.data)
   ? recommendedQuery.data
   : [];
+  console.log("RECOMMENDED 👉", recommended);
   const reviewsList: any[] = reviewsQuery.data || [];
   const avgRating = reviewsList.length > 0
     ? reviewsList.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsList.length
